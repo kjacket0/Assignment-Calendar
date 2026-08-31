@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ride Along — Paramedic Assignments</title>
+<meta name="description" content="Offline-friendly assignment tracker for paramedic program coursework." />
+<meta name="theme-color" content="#0f6266" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Ride Along" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="offline-banner" role="status" hidden>You're offline — changes are saved on this device.</div>
+
+<header class="app-header">
+  <h1>Ride Along</h1>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button id="tab-checklist" class="tab" role="tab" aria-selected="true" aria-controls="view-checklist">Checklist</button>
+    <button id="tab-calendar" class="tab" role="tab" aria-selected="false" aria-controls="view-calendar">Calendar</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-checklist" class="view" role="tabpanel" aria-labelledby="tab-checklist">
+    <div class="toolbar">
+      <label class="field-inline">
+        <span>Subject</span>
+        <select id="filter-subject">
+          <option value="">All subjects</option>
+        </select>
+      </label>
+      <label class="checkbox-inline">
+        <input type="checkbox" id="hide-completed" />
+        <span>Hide completed</span>
+      </label>
+      <button id="btn-export-ics" class="btn secondary" type="button">Export .ics</button>
+    </div>
+    <div id="checklist-groups"></div>
+    <p id="checklist-empty" class="empty-state" hidden>No assignments yet. Tap "+ Add" to get started.</p>
+  </section>
+
+  <section id="view-calendar" class="view" role="tabpanel" aria-labelledby="tab-calendar" hidden>
+    <div class="cal-nav">
+      <button id="cal-prev" class="btn icon-btn" type="button" aria-label="Previous month">‹</button>
+      <h2 id="cal-month-label"></h2>
+      <button id="cal-next" class="btn icon-btn" type="button" aria-label="Next month">›</button>
+    </div>
+    <div class="cal-grid" id="cal-weekdays"></div>
+    <div class="cal-grid" id="cal-days"></div>
+    <div id="cal-day-detail" aria-live="polite"></div>
+  </section>
+</main>
+
+<button id="btn-add" class="fab" type="button" aria-haspopup="dialog" aria-controls="add-dialog">
+  <span aria-hidden="true">+</span> Add
+</button>
+
+<dialog id="add-dialog">
+  <form id="add-form" method="dialog">
+    <h2 id="add-dialog-title">Add assignment</h2>
+
+    <label class="field">
+      <span>Title *</span>
+      <input type="text" id="f-title" required maxlength="120" autocomplete="off" />
+    </label>
+
+    <label class="field">
+      <span>Subject *</span>
+      <input type="text" id="f-subject" required maxlength="60" list="subject-list" autocomplete="off" />
+      <datalist id="subject-list"></datalist>
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span>Due date *</span>
+        <input type="date" id="f-date" required />
+      </label>
+      <label class="field">
+        <span>Due time</span>
+        <input type="time" id="f-time" />
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Notes</span>
+      <textarea id="f-notes" rows="3" maxlength="500"></textarea>
+    </label>
+
+    <input type="hidden" id="f-id" />
+
+    <div class="dialog-actions">
+      <button type="button" id="btn-delete" class="btn danger" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button type="button" id="btn-cancel" class="btn secondary">Cancel</button>
+      <button type="submit" id="btn-save" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
