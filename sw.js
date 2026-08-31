@@ -28,6 +28,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Only handle same-origin requests (the app shell). Cross-origin calls —
+  // e.g. the GitHub Gist sync API — go straight to the network untouched,
+  // so a failure surfaces as a normal fetch error instead of silently
+  // resolving to a cached index.html that isn't valid JSON.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
+
   // Network-first: while online, always serve the latest deployed files.
   // Cache is only a fallback for offline use, never a stale-first source.
   event.respondWith(

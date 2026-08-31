@@ -12,7 +12,9 @@
   function loadAssignments() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const list = raw ? JSON.parse(raw) : [];
+      // Backfill updatedAt for data saved before sync existed.
+      return list.map((a) => (a.updatedAt ? a : { ...a, updatedAt: Date.now() }));
     } catch {
       return [];
     }
@@ -20,6 +22,10 @@
 
   function saveAssignments(list) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function visibleAssignments() {
+    return assignments.filter((a) => !a.deleted);
   }
 
   let assignments = loadAssignments();
@@ -60,7 +66,7 @@
   }
 
   function uniqueSubjects() {
-    return [...new Set(assignments.map((a) => a.subject))].sort((a, b) => a.localeCompare(b));
+    return [...new Set(visibleAssignments().map((a) => a.subject))].sort((a, b) => a.localeCompare(b));
   }
 
   /* ---------- tabs ---------- */
@@ -111,15 +117,16 @@
     const subjectFilter = filterSubject.value;
     const hideDone = hideCompleted.checked;
 
-    let list = assignments.slice();
+    const visible = visibleAssignments();
+    let list = visible;
     if (subjectFilter) list = list.filter((a) => a.subject === subjectFilter);
     if (hideDone) list = list.filter((a) => !a.done);
 
     checklistGroups.innerHTML = '';
-    checklistEmpty.hidden = assignments.length > 0;
+    checklistEmpty.hidden = visible.length > 0;
 
     if (list.length === 0) {
-      checklistGroups.innerHTML = assignments.length
+      checklistGroups.innerHTML = visible.length
         ? '<p class="empty-state">Nothing to show here.</p>'
         : '';
       return;
@@ -161,8 +168,10 @@
     checkbox.setAttribute('aria-label', `Mark "${a.title}" ${a.done ? 'incomplete' : 'complete'}`);
     checkbox.addEventListener('change', () => {
       a.done = checkbox.checked;
+      a.updatedAt = Date.now();
       saveAssignments(assignments);
       renderChecklist();
+      scheduleSync();
     });
 
     const body = document.createElement('button');
@@ -224,7 +233,7 @@
     });
 
     const byDate = new Map();
-    for (const a of assignments) {
+    for (const a of visibleAssignments()) {
       if (!byDate.has(a.date)) byDate.set(a.date, []);
       byDate.get(a.date).push(a);
     }
@@ -332,6 +341,7 @@
         a.date = fDate.value;
         a.time = fTime.value || '';
         a.notes = fNotes.value.trim();
+        a.updatedAt = Date.now();
       }
     } else {
       assignments.push({
@@ -342,22 +352,31 @@
         time: fTime.value || '',
         notes: fNotes.value.trim(),
         done: false,
+        updatedAt: Date.now(),
       });
     }
     saveAssignments(assignments);
     dialog.close();
     renderChecklist();
     renderCalendar();
+    scheduleSync();
   });
 
   btnDelete.addEventListener('click', () => {
     if (!fId.value) return;
     if (!confirm('Delete this assignment?')) return;
-    assignments = assignments.filter((x) => x.id !== fId.value);
+    // Soft delete: keep a tombstone so the deletion propagates on sync
+    // instead of the item reappearing from another device's copy.
+    const a = assignments.find((x) => x.id === fId.value);
+    if (a) {
+      a.deleted = true;
+      a.updatedAt = Date.now();
+    }
     saveAssignments(assignments);
     dialog.close();
     renderChecklist();
     renderCalendar();
+    scheduleSync();
   });
 
   dialog.addEventListener('cancel', () => dialog.close());
@@ -424,11 +443,12 @@
   }
 
   document.getElementById('btn-export-ics').addEventListener('click', () => {
-    if (!assignments.length) {
+    const visible = visibleAssignments();
+    if (!visible.length) {
       alert('No assignments to export yet.');
       return;
     }
-    const ics = buildIcs(assignments);
+    const ics = buildIcs(visible);
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -440,13 +460,240 @@
     URL.revokeObjectURL(url);
   });
 
+  /* ---------- sync (GitHub Gist) ---------- */
+
+  const TOKEN_KEY = 'ride-along-gist-token';
+  const GIST_ID_KEY = 'ride-along-gist-id';
+  const LAST_SYNCED_KEY = 'ride-along-last-synced';
+  const GIST_MARKER = 'ride-along-sync-v1';
+  const GIST_FILENAME = 'ride-along-assignments.json';
+  const API_BASE = 'https://api.github.com';
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+  function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+  function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+
+  async function githubFetch(path, token, opts = {}) {
+    return fetch(`${API_BASE}${path}`, {
+      ...opts,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    });
+  }
+
+  async function apiJson(path, token, opts) {
+    const res = await githubFetch(path, token, opts);
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Invalid or expired token');
+      let detail = '';
+      try { detail = (await res.json()).message || ''; } catch { /* ignore */ }
+      throw new Error(detail || `GitHub API error (${res.status})`);
+    }
+    return res.status === 204 ? null : res.json();
+  }
+
+  async function findOrCreateGist(token) {
+    const cachedId = localStorage.getItem(GIST_ID_KEY);
+    if (cachedId) {
+      const res = await githubFetch(`/gists/${cachedId}`, token);
+      if (res.ok) return cachedId;
+      if (res.status !== 404) throw new Error(`GitHub API error (${res.status})`);
+      localStorage.removeItem(GIST_ID_KEY);
+    }
+
+    for (let page = 1; page <= 5; page++) {
+      const list = await apiJson(`/gists?per_page=100&page=${page}`, token);
+      const found = list.find((g) => g.description && g.description.includes(GIST_MARKER));
+      if (found) {
+        localStorage.setItem(GIST_ID_KEY, found.id);
+        return found.id;
+      }
+      if (list.length < 100) break;
+    }
+
+    const created = await apiJson('/gists', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        description: `Ride Along sync data (${GIST_MARKER}) — do not delete`,
+        public: false,
+        files: { [GIST_FILENAME]: { content: JSON.stringify({ assignments: [] }) } },
+      }),
+    });
+    localStorage.setItem(GIST_ID_KEY, created.id);
+    return created.id;
+  }
+
+  async function pullRemote(token, gistId) {
+    const gist = await apiJson(`/gists/${gistId}`, token);
+    const file = gist.files && gist.files[GIST_FILENAME];
+    if (!file) return [];
+    let content = file.content || '';
+    if (file.truncated && file.raw_url) {
+      content = await (await fetch(file.raw_url)).text();
+    }
+    try {
+      const parsed = JSON.parse(content || '{}');
+      return Array.isArray(parsed.assignments) ? parsed.assignments : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function pushRemote(token, gistId, list) {
+    await apiJson(`/gists/${gistId}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify({ assignments: list }) } } }),
+    });
+  }
+
+  function pruneTombstones(list) {
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    return list.filter((a) => !a.deleted || (a.updatedAt || 0) > cutoff);
+  }
+
+  function mergeAssignments(localList, remoteList) {
+    const byId = new Map();
+    for (const a of remoteList) byId.set(a.id, a);
+    for (const a of localList) {
+      const existing = byId.get(a.id);
+      if (!existing || (a.updatedAt || 0) >= (existing.updatedAt || 0)) byId.set(a.id, a);
+    }
+    return pruneTombstones([...byId.values()]);
+  }
+
+  function stableKey(list) {
+    return JSON.stringify([...list].sort((a, b) => a.id.localeCompare(b.id)));
+  }
+
+  let syncing = false;
+  let lastSyncError = null;
+  let syncDebounceTimer = null;
+
+  function scheduleSync() {
+    if (!getToken()) return;
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(() => syncNow(), 700);
+  }
+
+  async function syncNow() {
+    const token = getToken();
+    if (!token || syncing) return;
+
+    if (!navigator.onLine) {
+      lastSyncError = 'Offline — will sync when back online';
+      renderSyncStatusText();
+      return;
+    }
+
+    syncing = true;
+    lastSyncError = null;
+    setSyncButtonBusy(true);
+    try {
+      const gistId = await findOrCreateGist(token);
+      const remote = await pullRemote(token, gistId);
+      const merged = mergeAssignments(assignments, remote);
+
+      if (stableKey(merged) !== stableKey(assignments)) {
+        assignments = merged;
+        saveAssignments(assignments);
+        renderChecklist();
+        renderCalendar();
+      }
+      if (stableKey(merged) !== stableKey(remote)) {
+        await pushRemote(token, gistId, merged);
+      }
+      localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
+    } catch (err) {
+      lastSyncError = err.message || 'Sync failed';
+    } finally {
+      syncing = false;
+      setSyncButtonBusy(false);
+      renderSyncStatusText();
+    }
+  }
+
+  function relativeTime(ms) {
+    const mins = Math.round((Date.now() - ms) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins === 1) return '1 minute ago';
+    if (mins < 60) return `${mins} minutes ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs === 1) return '1 hour ago';
+    if (hrs < 24) return `${hrs} hours ago`;
+    const days = Math.round(hrs / 24);
+    return days === 1 ? '1 day ago' : `${days} days ago`;
+  }
+
+  function setSyncButtonBusy(busy) {
+    const btn = document.getElementById('btn-sync');
+    btn.disabled = busy;
+    btn.textContent = busy ? 'Syncing…' : 'Sync';
+  }
+
+  const syncDialog = document.getElementById('sync-dialog');
+  const syncForm = document.getElementById('sync-form');
+  const fToken = document.getElementById('f-token');
+  const syncStatusEl = document.getElementById('sync-status');
+  const btnSyncDisconnect = document.getElementById('btn-sync-disconnect');
+
+  function renderSyncStatusText() {
+    const token = getToken();
+    if (!token) {
+      syncStatusEl.textContent = 'Not connected on this device yet.';
+      return;
+    }
+    if (lastSyncError) {
+      syncStatusEl.textContent = `Sync error: ${lastSyncError}`;
+      return;
+    }
+    const last = localStorage.getItem(LAST_SYNCED_KEY);
+    syncStatusEl.textContent = last ? `Last synced ${relativeTime(Number(last))}` : 'Connected — syncing…';
+  }
+
+  function openSyncDialog() {
+    fToken.value = getToken();
+    btnSyncDisconnect.hidden = !getToken();
+    renderSyncStatusText();
+    syncDialog.showModal();
+  }
+
+  document.getElementById('btn-sync').addEventListener('click', () => {
+    if (getToken()) syncNow();
+    else openSyncDialog();
+  });
+  document.getElementById('btn-sync-settings').addEventListener('click', openSyncDialog);
+  document.getElementById('btn-sync-cancel').addEventListener('click', () => syncDialog.close());
+  syncDialog.addEventListener('cancel', () => syncDialog.close());
+
+  syncForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const token = fToken.value.trim();
+    if (!token) return;
+    setToken(token);
+    syncDialog.close();
+    syncNow();
+  });
+
+  btnSyncDisconnect.addEventListener('click', () => {
+    if (!confirm('Disconnect sync on this device? Your assignments stay saved locally.')) return;
+    clearToken();
+    localStorage.removeItem(GIST_ID_KEY);
+    localStorage.removeItem(LAST_SYNCED_KEY);
+    lastSyncError = null;
+    syncDialog.close();
+  });
+
   /* ---------- offline banner ---------- */
 
   const offlineBanner = document.getElementById('offline-banner');
   function updateOnlineStatus() {
     offlineBanner.hidden = navigator.onLine;
   }
-  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('online', () => { updateOnlineStatus(); syncNow(); });
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
@@ -470,4 +717,9 @@
   /* ---------- init ---------- */
 
   renderChecklist();
+  syncNow();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncNow();
+  });
+  window.addEventListener('focus', () => syncNow());
 })();

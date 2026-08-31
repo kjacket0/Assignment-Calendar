@@ -18,6 +18,11 @@ stays on your device in `localStorage`; nothing is sent anywhere.
   once it's loaded once.
 - **Installable** — has a web app manifest, so it can be added to your phone's
   home screen and opened like a native app.
+- **Syncs across devices** (optional) — via a private GitHub Gist. Tap the
+  Sync button, paste in a classic GitHub personal access token (`gist`
+  scope only), and every device using that same token/account shares one
+  list. No token configured, no server, no accounts of ours — it's your
+  data, in your GitHub account.
 
 ## Running it
 
@@ -44,5 +49,27 @@ node scripts/gen-icons.js
 
 Assignments are stored under the `ride-along-assignments-v1` key in
 `localStorage`, scoped to whichever origin serves the app. Clearing your
-browser's site data for that origin will remove them. There is currently no
-sync between devices — export to `.ics` if you want a portable copy.
+browser's site data for that origin will remove them.
+
+## Sync setup
+
+1. On GitHub: Settings → Developer settings → Personal access tokens →
+   Tokens (classic) → Generate new token, with just the `gist` scope. (The
+   in-app "Create a token" link jumps straight there with that scope
+   pre-checked.)
+2. In the app, tap **Sync** (or the ⚙ next to it), paste the token, and
+   save.
+3. Repeat on each device, generating a separate token per device but using
+   the same GitHub account each time.
+
+The app stores its data as a single private Gist (auto-created on first
+sync, auto-discovered by every other device using the same account — no
+need to copy a Gist ID around). Sync runs automatically on load, on
+tab/window focus, and shortly after each local edit; the Sync button also
+triggers it on demand. Merging is last-write-wins per assignment, so
+editing the same item on two offline devices resolves to whichever edit
+happened more recently — deletions included, via a small tombstone that's
+pruned after 90 days.
+
+A device with no token configured stays fully local — sync is opt-in per
+device.

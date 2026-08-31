@@ -53,9 +53,46 @@ body {
   z-index: 5;
 }
 
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .app-header h1 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 1.3rem;
+}
+
+.sync-controls {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.dialog-help {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+
+.dialog-help code {
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.dialog-help a {
+  color: var(--accent);
+}
+
+.sync-status-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: -4px 0 12px;
 }
 
 .tabs {

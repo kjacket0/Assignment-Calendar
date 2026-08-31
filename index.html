@@ -19,7 +19,13 @@
 <div id="offline-banner" role="status" hidden>You're offline — changes are saved on this device.</div>
 
 <header class="app-header">
-  <h1>Ride Along</h1>
+  <div class="header-row">
+    <h1>Ride Along</h1>
+    <div class="sync-controls">
+      <button id="btn-sync" class="btn icon-btn" type="button">Sync</button>
+      <button id="btn-sync-settings" class="btn icon-btn" type="button" aria-haspopup="dialog" aria-controls="sync-dialog" aria-label="Sync settings" title="Sync settings">⚙</button>
+    </div>
+  </div>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button id="tab-checklist" class="tab" role="tab" aria-selected="true" aria-controls="view-checklist">Checklist</button>
     <button id="tab-calendar" class="tab" role="tab" aria-selected="false" aria-controls="view-calendar">Calendar</button>
@@ -99,6 +105,30 @@
       <span class="spacer"></span>
       <button type="button" id="btn-cancel" class="btn secondary">Cancel</button>
       <button type="submit" id="btn-save" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="sync-dialog">
+  <form id="sync-form" method="dialog">
+    <h2>Sync via GitHub Gist</h2>
+    <p class="dialog-help">
+      Assignments sync as a private Gist on your GitHub account. Create a
+      classic personal access token with just the <code>gist</code> scope,
+      then paste it below. Do this once per device, using the same GitHub
+      account each time, and every device will see the same list.
+      <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Ride%20Along%20Sync" target="_blank" rel="noopener">Create a token →</a>
+    </p>
+    <label class="field">
+      <span>Personal access token</span>
+      <input type="password" id="f-token" autocomplete="off" placeholder="ghp_..." />
+    </label>
+    <p id="sync-status" class="sync-status-text" aria-live="polite"></p>
+    <div class="dialog-actions">
+      <button type="button" id="btn-sync-disconnect" class="btn danger" hidden>Disconnect</button>
+      <span class="spacer"></span>
+      <button type="button" id="btn-sync-cancel" class="btn secondary">Cancel</button>
+      <button type="submit" id="btn-sync-save" class="btn primary">Save &amp; Sync</button>
     </div>
   </form>
 </dialog>
