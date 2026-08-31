@@ -1,7 +1,7 @@
 :root {
   color-scheme: light dark;
-  --accent: #0f6266;
-  --accent-contrast: #f3fbfa;
+  --accent: #65063e;
+  --accent-contrast: #fdf1f7;
   --bg: #f7f8f7;
   --surface: #ffffff;
   --text: #1a1f1e;
@@ -21,8 +21,8 @@
     --text: #eef2f1;
     --muted: #9aa6a3;
     --border: #2b3331;
-    --accent: #3fb6ba;
-    --accent-contrast: #06201f;
+    --accent: #e458ab;
+    --accent-contrast: #1a0410;
     --overdue: #ff8a80;
   }
 }
