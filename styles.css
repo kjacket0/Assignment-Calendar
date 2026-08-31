@@ -34,19 +34,26 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  padding-bottom: 88px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
+/*
+ * iOS standalone PWAs with a translucent status bar draw page content
+ * underneath it (that's what "black-translucent" means), so anything
+ * pinned to the top needs its own padding to clear the clock/battery
+ * row instead of sitting behind it. env(safe-area-inset-*) is 0 on
+ * everything else, so this is a no-op outside that context.
+ */
 #offline-banner {
   background: #5b4300;
   color: #fff8e1;
   text-align: center;
   font-size: 0.85rem;
-  padding: 6px 12px;
+  padding: calc(6px + env(safe-area-inset-top)) 12px 6px;
 }
 
 .app-header {
-  padding: 16px 16px 0;
+  padding: calc(16px + env(safe-area-inset-top)) 16px 0;
   position: sticky;
   top: 0;
   background: var(--bg);
@@ -244,8 +251,8 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 .fab {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(20px + env(safe-area-inset-bottom));
   background: var(--accent);
   color: var(--accent-contrast);
   border: none;
