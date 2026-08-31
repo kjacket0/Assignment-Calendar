@@ -456,6 +456,15 @@
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     });
+
+    // When a newer service worker takes over (a fresh deploy), reload once
+    // so an already-open tab/installed window shows it instead of stale assets.
+    let reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloadedForUpdate) return;
+      reloadedForUpdate = true;
+      window.location.reload();
+    });
   }
 
   /* ---------- init ---------- */

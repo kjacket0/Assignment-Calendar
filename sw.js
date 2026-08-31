@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ride-along-v1';
+const CACHE_NAME = 'ride-along-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -28,18 +28,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Network-first: while online, always serve the latest deployed files.
+  // Cache is only a fallback for offline use, never a stale-first source.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached || caches.match('./index.html'));
-      return cached || network;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
   );
 });
