@@ -1,9 +1,11 @@
-# Ride Along
+# MediCal
 
 A small, fast, offline-friendly PWA for tracking paramedic program assignments.
 
-No build step, no backend, no frameworks — just static HTML/CSS/JS. All data
-stays on your device in `localStorage`; nothing is sent anywhere.
+No build step, no frameworks — just static HTML/CSS/JS backed by a small
+Firestore database for optional sync. All data lives in `localStorage` on
+your device first; sync is opt-in and adds nothing but a JSON blob per list
+in Firestore.
 
 ## Features
 
@@ -11,18 +13,20 @@ stays on your device in `localStorage`; nothing is sent anywhere.
   overdue items flagged, completed items collapsible.
 - **Calendar view** — month grid with a dot per subject on days with something
   due; tap a day to see its assignments.
-- **.ics export** — one tap turns your current list into a calendar file you
-  can import into Google Calendar, Apple Calendar, Outlook, etc.
+- **Export to Calendar** — one tap turns your current list into a `.ics` file
+  you can import into Google Calendar, Apple Calendar, Outlook, etc.
 - **Works offline** — a service worker caches the app shell, and since all
   data lives in `localStorage`, the app is fully usable with no connection
   once it's loaded once.
 - **Installable** — has a web app manifest, so it can be added to your phone's
   home screen and opened like a native app.
-- **Syncs across devices** (optional) — via a private GitHub Gist. Tap the
-  Sync button, paste in a classic GitHub personal access token (`gist`
-  scope only), and every device using that same token/account shares one
-  list. No token configured, no server, no accounts of ours — it's your
-  data, in your GitHub account.
+- **Color themes** — six accent themes, picked in Settings, each tuned for
+  light and dark mode.
+- **Syncs across devices** (optional, no account needed) — turning on sync
+  gives your list a private, self-issued code. Enter that same code on
+  another device to link it — no signup, no password, nothing to remember
+  but a code you can copy-paste. You can keep multiple named lists on one
+  device and switch between them.
 
 ## Running it
 
@@ -47,29 +51,63 @@ node scripts/gen-icons.js
 
 ## Data
 
-Assignments are stored under the `ride-along-assignments-v1` key in
+Assignments are stored under the `medical-assignments-v1` key in
 `localStorage`, scoped to whichever origin serves the app. Clearing your
 browser's site data for that origin will remove them.
 
-## Sync setup
+## Sync setup (one-time, for whoever deploys the app)
 
-1. On GitHub: Settings → Developer settings → Personal access tokens →
-   Tokens (classic) → Generate new token, with just the `gist` scope. (The
-   in-app "Create a token" link jumps straight there with that scope
-   pre-checked.)
-2. In the app, tap **Sync** (or the ⚙ next to it), paste the token, and
-   save.
-3. Repeat on each device, generating a separate token per device but using
-   the same GitHub account each time.
+Sync is backed by a free Firebase project. This is a one-time setup by the
+app owner — end users never sign up for anything.
 
-The app stores its data as a single private Gist (auto-created on first
-sync, auto-discovered by every other device using the same account — no
-need to copy a Gist ID around). Sync runs automatically on load, on
-tab/window focus, and shortly after each local edit; the Sync button also
-triggers it on demand. Merging is last-write-wins per assignment, so
-editing the same item on two offline devices resolves to whichever edit
-happened more recently — deletions included, via a small tombstone that's
-pruned after 90 days.
+1. Go to the [Firebase console](https://console.firebase.google.com/) →
+   **Add project** → give it any name → you can skip Google Analytics →
+   **Create project**.
+2. In the left sidebar: **Build → Firestore Database → Create database** →
+   **Start in production mode** → pick any location → **Enable**.
+3. Open the **Rules** tab and replace the contents with:
 
-A device with no token configured stays fully local — sync is opt-in per
-device.
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /syncCodes/{code} {
+         allow get, update, create: if code.size() >= 20;
+         allow delete: if false;
+         allow list: if false;
+       }
+     }
+   }
+   ```
+
+   This lets anyone holding a specific (long, random) code read or write
+   *only* that one document — no listing or deleting, no guessing your way
+   in from a short code. The code itself, generated client-side with
+   `crypto.randomUUID()`, is what stands in for authentication.
+4. Publish the rules, then go to **Project settings** (gear icon) → scroll to
+   **Your apps** → click the web icon (`</>`) → register an app (nickname
+   only, skip Hosting) → copy the `firebaseConfig` values.
+5. Drop `apiKey` and `projectId` into the two `FIREBASE_*` constants near the
+   top of the sync section in `app.js`.
+
+The Firebase API key is not a secret — Firebase's own docs say it's safe to
+ship client-side — the security boundary is the rules above, not the key.
+
+## How sync works
+
+- Turning on sync (tap **Sync**, or **Turn on sync** in Settings) mints a
+  random ~32-character code for the current list and starts syncing it to
+  Firestore.
+- **Copy** that code from Settings and paste it into another device's
+  **Link a device with a code** field to join the same list there.
+- **+ New list** creates another independent list with its own code —
+  useful for e.g. separate semesters. **Rename** and **Forget this list**
+  (local-only removal, doesn't touch the cloud copy) manage the ones you
+  have.
+- Sync runs automatically on load, on tab/window focus, and shortly after
+  each local edit; the Sync button also triggers it on demand.
+- Merging is last-write-wins per assignment, so editing the same item on two
+  offline devices resolves to whichever edit happened more recently —
+  deletions included, via a small tombstone pruned after 90 days.
+- Turning sync off just pauses it — your local copy and the cloud copy are
+  both left alone, and turning it back on picks up where you left off.

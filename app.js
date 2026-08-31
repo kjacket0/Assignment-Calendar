@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'ride-along-assignments-v1';
+  const STORAGE_KEY = 'medical-assignments-v1';
   const SUBJECT_PALETTE = [
     '#0f6266', '#a35d00', '#5b3fb6', '#b3261e',
     '#2e7d32', '#8e4585', '#00695c', '#6d4c00',
@@ -420,11 +420,11 @@
     const now = new Date();
     const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Ride Along//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MediCal//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
 
     for (const a of list) {
       lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${a.id}@ride-along.local`);
+      lines.push(`UID:${a.id}@medical.local`);
       lines.push(`DTSTAMP:${stamp}`);
       if (a.time) {
         lines.push(`DTSTART:${toIcsDateTime(a.date, a.time)}`);
@@ -453,101 +453,141 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ride-along-assignments-${todayStr()}.ics`;
+    a.download = `medical-assignments-${todayStr()}.ics`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
   });
 
-  /* ---------- sync (GitHub Gist) ---------- */
+  /* ---------- theming ---------- */
 
-  const TOKEN_KEY = 'ride-along-gist-token';
-  const GIST_ID_KEY = 'ride-along-gist-id';
-  const LAST_SYNCED_KEY = 'ride-along-last-synced';
-  const GIST_MARKER = 'ride-along-sync-v1';
-  const GIST_FILENAME = 'ride-along-assignments.json';
-  const API_BASE = 'https://api.github.com';
+  const THEME_KEY = 'medical-theme';
+  const THEMES = [
+    { id: 'plum', label: 'Plum', light: '#7c1fa0', dark: '#bb5de0' },
+    { id: 'blue', label: 'Blue', light: '#1c4d9c', dark: '#5a8ee2' },
+    { id: 'teal', label: 'Teal', light: '#127d79', dark: '#5ae2dd' },
+    { id: 'crimson', label: 'Crimson', light: '#9c1c31', dark: '#e25a71' },
+    { id: 'green', label: 'Green', light: '#127d44', dark: '#5ae29a' },
+    { id: 'amber', label: 'Amber', light: '#9c641c', dark: '#e2a75a' },
+  ];
 
-  function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
-  function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-  function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+  function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'plum'; }
 
-  async function githubFetch(path, token, opts = {}) {
-    return fetch(`${API_BASE}${path}`, {
+  function applyTheme(id) {
+    document.documentElement.setAttribute('data-theme', id);
+    localStorage.setItem(THEME_KEY, id);
+    renderThemeSwatches();
+  }
+
+  const themeSwatchesEl = document.getElementById('theme-swatches');
+
+  function renderThemeSwatches() {
+    const current = getStoredTheme();
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    themeSwatchesEl.innerHTML = '';
+    for (const t of THEMES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'theme-swatch';
+      btn.style.setProperty('--swatch', prefersDark ? t.dark : t.light);
+      btn.setAttribute('aria-label', t.label);
+      btn.setAttribute('aria-pressed', String(t.id === current));
+      btn.title = t.label;
+      btn.addEventListener('click', () => applyTheme(t.id));
+      themeSwatchesEl.appendChild(btn);
+    }
+  }
+
+  renderThemeSwatches();
+
+  /* ---------- sync (Firebase Firestore) ---------- */
+
+  // Filled in once the Firebase project exists — see README for setup.
+  // The API key is not a secret (Firebase's own docs say it's safe to
+  // ship client-side); access is governed by Firestore security rules,
+  // which restrict every document to exact-path get/create/update only
+  // (no listing, no deleting) — so a sync code functions like an
+  // unguessable capability key rather than a password.
+  const FIREBASE_PROJECT_ID = 'REPLACE_WITH_FIREBASE_PROJECT_ID';
+  const FIREBASE_API_KEY = 'REPLACE_WITH_FIREBASE_API_KEY';
+  const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+
+  const SYNC_ENABLED_KEY = 'medical-sync-enabled';
+  const LISTS_KEY = 'medical-lists';
+  const ACTIVE_CODE_KEY = 'medical-active-code';
+  const LAST_SYNCED_KEY = 'medical-last-synced';
+
+  function isSyncEnabled() { return localStorage.getItem(SYNC_ENABLED_KEY) === '1'; }
+
+  function genCode() {
+    const raw = window.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}-${Math.random()}`;
+    return raw.replace(/-/g, '');
+  }
+
+  function getLists() {
+    try { return JSON.parse(localStorage.getItem(LISTS_KEY) || '[]'); } catch { return []; }
+  }
+  function saveLists(lists) { localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
+  function getActiveCode() { return localStorage.getItem(ACTIVE_CODE_KEY) || ''; }
+  function setActiveCode(code) { localStorage.setItem(ACTIVE_CODE_KEY, code); }
+
+  // Ensures this device has at least one list and an active code, minting
+  // a fresh one on first use. Purely local — no network round-trip needed,
+  // since codes are self-issued rather than discovered from an account.
+  function ensureActiveCode() {
+    let lists = getLists();
+    if (lists.length === 0) {
+      const code = genCode();
+      lists = [{ code, name: 'My Assignments' }];
+      saveLists(lists);
+      setActiveCode(code);
+    }
+    let active = getActiveCode();
+    if (!active || !lists.some((l) => l.code === active)) {
+      active = lists[0].code;
+      setActiveCode(active);
+    }
+    return active;
+  }
+
+  async function firestoreFetch(path, opts = {}) {
+    const sep = path.includes('?') ? '&' : '?';
+    return fetch(`${FIRESTORE_BASE}${path}${sep}key=${FIREBASE_API_KEY}`, {
       ...opts,
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
-      },
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
     });
   }
 
-  async function apiJson(path, token, opts) {
-    const res = await githubFetch(path, token, opts);
-    if (!res.ok) {
-      if (res.status === 401) throw new Error('Invalid or expired token');
-      let detail = '';
-      try { detail = (await res.json()).message || ''; } catch { /* ignore */ }
-      throw new Error(detail || `GitHub API error (${res.status})`);
-    }
-    return res.status === 204 ? null : res.json();
-  }
-
-  async function findOrCreateGist(token) {
-    const cachedId = localStorage.getItem(GIST_ID_KEY);
-    if (cachedId) {
-      const res = await githubFetch(`/gists/${cachedId}`, token);
-      if (res.ok) return cachedId;
-      if (res.status !== 404) throw new Error(`GitHub API error (${res.status})`);
-      localStorage.removeItem(GIST_ID_KEY);
-    }
-
-    for (let page = 1; page <= 5; page++) {
-      const list = await apiJson(`/gists?per_page=100&page=${page}`, token);
-      const found = list.find((g) => g.description && g.description.includes(GIST_MARKER));
-      if (found) {
-        localStorage.setItem(GIST_ID_KEY, found.id);
-        return found.id;
-      }
-      if (list.length < 100) break;
-    }
-
-    const created = await apiJson('/gists', token, {
-      method: 'POST',
-      body: JSON.stringify({
-        description: `Ride Along sync data (${GIST_MARKER}) — do not delete`,
-        public: false,
-        files: { [GIST_FILENAME]: { content: JSON.stringify({ assignments: [] }) } },
-      }),
-    });
-    localStorage.setItem(GIST_ID_KEY, created.id);
-    return created.id;
-  }
-
-  async function pullRemote(token, gistId) {
-    const gist = await apiJson(`/gists/${gistId}`, token);
-    const file = gist.files && gist.files[GIST_FILENAME];
-    if (!file) return [];
-    let content = file.content || '';
-    if (file.truncated && file.raw_url) {
-      content = await (await fetch(file.raw_url)).text();
-    }
+  async function firestoreErrorMessage(res) {
     try {
-      const parsed = JSON.parse(content || '{}');
-      return Array.isArray(parsed.assignments) ? parsed.assignments : [];
+      const body = await res.json();
+      return (body.error && body.error.message) || `Sync backend error (${res.status})`;
     } catch {
-      return [];
+      return `Sync backend error (${res.status})`;
     }
   }
 
-  async function pushRemote(token, gistId, list) {
-    await apiJson(`/gists/${gistId}`, token, {
+  async function pullRemote(code) {
+    const res = await firestoreFetch(`/syncCodes/${code}`);
+    if (res.status === 404) return { name: '', assignments: [] };
+    if (!res.ok) throw new Error(await firestoreErrorMessage(res));
+    const doc = await res.json();
+    const raw = doc.fields && doc.fields.data && doc.fields.data.stringValue;
+    try {
+      const parsed = JSON.parse(raw || '{}');
+      return { name: parsed.name || '', assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [] };
+    } catch {
+      return { name: '', assignments: [] };
+    }
+  }
+
+  async function pushRemote(code, name, list) {
+    const res = await firestoreFetch(`/syncCodes/${code}`, {
       method: 'PATCH',
-      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify({ assignments: list }) } } }),
+      body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify({ name, assignments: list }) } } }),
     });
+    if (!res.ok) throw new Error(await firestoreErrorMessage(res));
   }
 
   function pruneTombstones(list) {
@@ -574,14 +614,13 @@
   let syncDebounceTimer = null;
 
   function scheduleSync() {
-    if (!getToken()) return;
+    if (!isSyncEnabled()) return;
     clearTimeout(syncDebounceTimer);
     syncDebounceTimer = setTimeout(() => syncNow(), 700);
   }
 
   async function syncNow() {
-    const token = getToken();
-    if (!token || syncing) return;
+    if (!isSyncEnabled() || syncing) return;
 
     if (!navigator.onLine) {
       lastSyncError = 'Offline — will sync when back online';
@@ -589,13 +628,13 @@
       return;
     }
 
+    const code = ensureActiveCode();
     syncing = true;
     lastSyncError = null;
     setSyncButtonBusy(true);
     try {
-      const gistId = await findOrCreateGist(token);
-      const remote = await pullRemote(token, gistId);
-      const merged = mergeAssignments(assignments, remote);
+      const remote = await pullRemote(code);
+      const merged = mergeAssignments(assignments, remote.assignments);
 
       if (stableKey(merged) !== stableKey(assignments)) {
         assignments = merged;
@@ -603,8 +642,20 @@
         renderChecklist();
         renderCalendar();
       }
-      if (stableKey(merged) !== stableKey(remote)) {
-        await pushRemote(token, gistId, merged);
+
+      const lists = getLists();
+      let entry = lists.find((l) => l.code === code);
+      if (!entry) {
+        entry = { code, name: remote.name || 'My Assignments' };
+        lists.push(entry);
+        saveLists(lists);
+      } else if (!entry.name && remote.name) {
+        entry.name = remote.name;
+        saveLists(lists);
+      }
+
+      if (stableKey(merged) !== stableKey(remote.assignments) || entry.name !== remote.name) {
+        await pushRemote(code, entry.name, merged);
       }
       localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
     } catch (err) {
@@ -613,6 +664,104 @@
       syncing = false;
       setSyncButtonBusy(false);
       renderSyncStatusText();
+      renderListControls();
+    }
+  }
+
+  // Pushes any pending local edits to the currently active list, then
+  // switches the working set over to a different list. Nothing local is
+  // lost in the handoff — the old list is flushed before switching away.
+  async function switchActiveCode(newCode) {
+    if (syncing || newCode === getActiveCode()) return;
+    syncing = true;
+    lastSyncError = null;
+    setSyncButtonBusy(true);
+    try {
+      const currentCode = getActiveCode();
+      if (currentCode) {
+        const remoteCurrent = await pullRemote(currentCode);
+        const mergedCurrent = mergeAssignments(assignments, remoteCurrent.assignments);
+        const currentEntry = getLists().find((l) => l.code === currentCode);
+        if (stableKey(mergedCurrent) !== stableKey(remoteCurrent.assignments)) {
+          await pushRemote(currentCode, currentEntry ? currentEntry.name : '', mergedCurrent);
+        }
+      }
+      const remoteNew = await pullRemote(newCode);
+      assignments = pruneTombstones(remoteNew.assignments);
+      saveAssignments(assignments);
+      setActiveCode(newCode);
+      localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
+      renderChecklist();
+      renderCalendar();
+    } catch (err) {
+      lastSyncError = err.message || 'Failed to switch lists';
+    } finally {
+      syncing = false;
+      setSyncButtonBusy(false);
+      renderSyncStatusText();
+      renderListControls();
+    }
+  }
+
+  async function createNewList() {
+    const name = (prompt('Name this list (e.g. "Fall Semester"):') || '').trim();
+    if (!name) return;
+    const code = genCode();
+    const lists = getLists();
+    lists.push({ code, name });
+    saveLists(lists);
+    await switchActiveCode(code);
+  }
+
+  function renameActiveList() {
+    const code = getActiveCode();
+    if (!code) return;
+    const lists = getLists();
+    const current = lists.find((l) => l.code === code);
+    const name = (prompt('Rename this list:', current ? current.name : '') || '').trim();
+    if (!name || (current && name === current.name)) return;
+    if (current) current.name = name;
+    else lists.push({ code, name });
+    saveLists(lists);
+    renderListControls();
+    scheduleSync();
+  }
+
+  function forgetActiveList() {
+    const code = getActiveCode();
+    const lists = getLists();
+    if (lists.length <= 1) {
+      alert('This is the only list on this device — create another list first if you want to remove this one.');
+      return;
+    }
+    if (!confirm("Remove this list from this device? It stays intact in the cloud — this device just stops tracking it. You can relink it later by entering its code again.")) return;
+    const remaining = lists.filter((l) => l.code !== code);
+    saveLists(remaining);
+    switchActiveCode(remaining[0].code);
+  }
+
+  async function joinCode() {
+    const input = document.getElementById('f-join-code');
+    const code = input.value.trim();
+    if (!code) return;
+    const lists = getLists();
+    if (lists.some((l) => l.code === code)) {
+      await switchActiveCode(code);
+      input.value = '';
+      return;
+    }
+    setSyncButtonBusy(true);
+    try {
+      const remote = await pullRemote(code);
+      lists.push({ code, name: remote.name || 'Linked list' });
+      saveLists(lists);
+      await switchActiveCode(code);
+      input.value = '';
+    } catch (err) {
+      lastSyncError = err.message || 'Failed to link that code';
+      renderSyncStatusText();
+    } finally {
+      setSyncButtonBusy(false);
     }
   }
 
@@ -635,15 +784,16 @@
   }
 
   const syncDialog = document.getElementById('sync-dialog');
-  const syncForm = document.getElementById('sync-form');
-  const fToken = document.getElementById('f-token');
   const syncStatusEl = document.getElementById('sync-status');
-  const btnSyncDisconnect = document.getElementById('btn-sync-disconnect');
+  const syncOffControls = document.getElementById('sync-off-controls');
+  const syncOnControls = document.getElementById('sync-on-controls');
+  const activeCodeDisplay = document.getElementById('active-code-display');
+  const listSelectEl = document.getElementById('list-select');
+  const fJoinCode = document.getElementById('f-join-code');
 
   function renderSyncStatusText() {
-    const token = getToken();
-    if (!token) {
-      syncStatusEl.textContent = 'Not connected on this device yet.';
+    if (!isSyncEnabled()) {
+      syncStatusEl.textContent = '';
       return;
     }
     if (lastSyncError) {
@@ -654,37 +804,71 @@
     syncStatusEl.textContent = last ? `Last synced ${relativeTime(Number(last))}` : 'Connected — syncing…';
   }
 
-  function openSyncDialog() {
-    fToken.value = getToken();
-    btnSyncDisconnect.hidden = !getToken();
+  function renderListControls() {
+    const lists = getLists();
+    const active = getActiveCode();
+    activeCodeDisplay.textContent = active;
+    listSelectEl.innerHTML = lists
+      .map((l) => `<option value="${escapeHtml(l.code)}"${l.code === active ? ' selected' : ''}>${escapeHtml(l.name)}</option>`)
+      .join('');
+  }
+
+  function renderSyncSections() {
+    const enabled = isSyncEnabled();
+    syncOffControls.hidden = enabled;
+    syncOnControls.hidden = !enabled;
+    if (!enabled) return;
+    ensureActiveCode();
+    renderListControls();
     renderSyncStatusText();
+  }
+
+  function openSyncDialog() {
+    renderSyncSections();
     syncDialog.showModal();
   }
 
-  document.getElementById('btn-sync').addEventListener('click', () => {
-    if (getToken()) syncNow();
-    else openSyncDialog();
+  document.getElementById('btn-sync').addEventListener('click', async () => {
+    if (!isSyncEnabled()) localStorage.setItem(SYNC_ENABLED_KEY, '1');
+    await syncNow();
   });
   document.getElementById('btn-sync-settings').addEventListener('click', openSyncDialog);
   document.getElementById('btn-sync-cancel').addEventListener('click', () => syncDialog.close());
   syncDialog.addEventListener('cancel', () => syncDialog.close());
 
-  syncForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const token = fToken.value.trim();
-    if (!token) return;
-    setToken(token);
-    syncDialog.close();
-    syncNow();
+  document.getElementById('btn-sync-enable').addEventListener('click', async () => {
+    localStorage.setItem(SYNC_ENABLED_KEY, '1');
+    renderSyncSections();
+    await syncNow();
+    renderSyncSections();
   });
 
-  btnSyncDisconnect.addEventListener('click', () => {
-    if (!confirm('Disconnect sync on this device? Your assignments stay saved locally.')) return;
-    clearToken();
-    localStorage.removeItem(GIST_ID_KEY);
-    localStorage.removeItem(LAST_SYNCED_KEY);
+  document.getElementById('btn-copy-code').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-copy-code');
+    try {
+      await navigator.clipboard.writeText(getActiveCode());
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    } catch {
+      alert('Could not copy automatically — select and copy the code manually.');
+    }
+  });
+
+  listSelectEl.addEventListener('change', () => switchActiveCode(listSelectEl.value));
+  document.getElementById('btn-list-new').addEventListener('click', createNewList);
+  document.getElementById('btn-list-rename').addEventListener('click', renameActiveList);
+  document.getElementById('btn-list-forget').addEventListener('click', forgetActiveList);
+  document.getElementById('btn-join-code').addEventListener('click', joinCode);
+  fJoinCode.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); joinCode(); }
+  });
+
+  document.getElementById('btn-sync-disconnect').addEventListener('click', () => {
+    if (!confirm("Turn off sync on this device? Your assignments stay saved locally — the cloud copy is untouched.")) return;
+    localStorage.removeItem(SYNC_ENABLED_KEY);
     lastSyncError = null;
-    syncDialog.close();
+    renderSyncSections();
   });
 
   /* ---------- offline banner ---------- */

@@ -1,6 +1,6 @@
 {
-  "name": "Ride Along — Paramedic Assignments",
-  "short_name": "Ride Along",
+  "name": "MediCal — Paramedic Assignments",
+  "short_name": "MediCal",
   "description": "Offline-friendly checklist and calendar for paramedic program assignments.",
   "start_url": "./index.html",
   "scope": "./",

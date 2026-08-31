@@ -27,6 +27,55 @@
   }
 }
 
+/*
+ * Color themes: the base :root above is "Plum" (the default). Each theme
+ * below only overrides the accent in light mode (the light background
+ * stays neutral everywhere, on purpose — a colored light background
+ * fights with dark body text) but gets a fuller tinted palette in dark
+ * mode. Picked via the settings dialog, persisted to localStorage, and
+ * applied before first paint by an inline script in index.html so there's
+ * no flash of the wrong theme on load.
+ */
+:root[data-theme="blue"] { --accent: #1c4d9c; --accent-contrast: #f4f7fa; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="blue"] {
+    --bg: #08101c; --surface: #0e1b2f; --text: #e9ecf2; --muted: #98a3b3;
+    --border: #273449; --accent: #5a8ee2; --accent-contrast: #091220;
+  }
+}
+
+:root[data-theme="teal"] { --accent: #127d79; --accent-contrast: #f4fafa; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="teal"] {
+    --bg: #081c1b; --surface: #0e2f2e; --text: #e9f2f1; --muted: #98b3b2;
+    --border: #274948; --accent: #5ae2dd; --accent-contrast: #09201f;
+  }
+}
+
+:root[data-theme="crimson"] { --accent: #9c1c31; --accent-contrast: #faf4f5; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="crimson"] {
+    --bg: #1c080b; --surface: #2f0e13; --text: #f2e9ea; --muted: #b3989d;
+    --border: #49272d; --accent: #e25a71; --accent-contrast: #20090d;
+  }
+}
+
+:root[data-theme="green"] { --accent: #127d44; --accent-contrast: #f4faf7; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="green"] {
+    --bg: #081c11; --surface: #0e2f1d; --text: #e9f2ed; --muted: #98b3a5;
+    --border: #274937; --accent: #5ae29a; --accent-contrast: #092014;
+  }
+}
+
+:root[data-theme="amber"] { --accent: #9c641c; --accent-contrast: #faf8f4; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="amber"] {
+    --bg: #1c1308; --surface: #2f210e; --text: #f2eee9; --muted: #b3a898;
+    --border: #493a27; --accent: #e2a75a; --accent-contrast: #201609;
+  }
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -100,6 +149,75 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
   margin: -4px 0 12px;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-section h3 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.theme-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--swatch);
+  padding: 0;
+  cursor: pointer;
+}
+
+.theme-swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -6px 0 12px;
+}
+
+.list-actions .btn {
+  font-size: 0.82rem;
+  padding: 7px 10px;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.code-row code {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.code-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .tabs {

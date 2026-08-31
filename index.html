@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Ride Along — Paramedic Assignments</title>
+<title>MediCal — Paramedic Assignments</title>
 <meta name="description" content="Offline-friendly assignment tracker for paramedic program coursework." />
 <meta name="theme-color" content="#7c1fa0" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#bb5de0" media="(prefers-color-scheme: dark)" />
@@ -12,7 +12,17 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Ride Along" />
+<meta name="apple-mobile-web-app-title" content="MediCal" />
+<script>
+  // Applied before first paint so switching themes in settings doesn't
+  // cause a flash of the default theme on the next load.
+  (function () {
+    try {
+      var theme = localStorage.getItem('medical-theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) { /* ignore */ }
+  })();
+</script>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -20,10 +30,10 @@
 
 <header class="app-header">
   <div class="header-row">
-    <h1>Ride Along</h1>
+    <h1>MediCal</h1>
     <div class="sync-controls">
       <button id="btn-sync" class="btn icon-btn" type="button">Sync</button>
-      <button id="btn-sync-settings" class="btn icon-btn" type="button" aria-haspopup="dialog" aria-controls="sync-dialog" aria-label="Sync settings" title="Sync settings">⚙</button>
+      <button id="btn-sync-settings" class="btn icon-btn" type="button" aria-haspopup="dialog" aria-controls="sync-dialog" aria-label="Settings" title="Settings">⚙</button>
     </div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Views">
@@ -45,7 +55,7 @@
         <input type="checkbox" id="hide-completed" />
         <span>Hide completed</span>
       </label>
-      <button id="btn-export-ics" class="btn secondary" type="button">Export .ics</button>
+      <button id="btn-export-ics" class="btn secondary" type="button">Export to Calendar</button>
     </div>
     <div id="checklist-groups"></div>
     <p id="checklist-empty" class="empty-state" hidden>No assignments yet. Tap "+ Add" to get started.</p>
@@ -110,27 +120,64 @@
 </dialog>
 
 <dialog id="sync-dialog">
-  <form id="sync-form" method="dialog">
-    <h2>Sync via GitHub Gist</h2>
-    <p class="dialog-help">
-      Assignments sync as a private Gist on your GitHub account. Create a
-      classic personal access token with just the <code>gist</code> scope,
-      then paste it below. Do this once per device, using the same GitHub
-      account each time, and every device will see the same list.
-      <a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Ride%20Along%20Sync" target="_blank" rel="noopener">Create a token →</a>
-    </p>
-    <label class="field">
-      <span>Personal access token</span>
-      <input type="password" id="f-token" autocomplete="off" placeholder="ghp_..." />
-    </label>
-    <p id="sync-status" class="sync-status-text" aria-live="polite"></p>
+  <div>
+    <h2>Settings</h2>
+
+    <section class="settings-section">
+      <h3>Appearance</h3>
+      <div class="theme-swatches" id="theme-swatches" role="group" aria-label="Color theme"></div>
+    </section>
+
+    <section class="settings-section">
+      <h3>Sync</h3>
+      <p class="dialog-help">
+        Sync your assignments across devices — no account needed. Turning
+        this on gives this list its own private code; enter that same code
+        on another device to link it here.
+      </p>
+
+      <div id="sync-off-controls">
+        <button type="button" id="btn-sync-enable" class="btn primary">Turn on sync</button>
+      </div>
+
+      <div id="sync-on-controls" hidden>
+        <label class="field">
+          <span>List</span>
+          <select id="list-select"></select>
+        </label>
+        <div class="list-actions">
+          <button type="button" id="btn-list-new" class="btn secondary">+ New list</button>
+          <button type="button" id="btn-list-rename" class="btn secondary">Rename</button>
+          <button type="button" id="btn-list-forget" class="btn secondary">Forget this list</button>
+        </div>
+
+        <label class="field">
+          <span>This list's code</span>
+          <div class="code-row">
+            <code id="active-code-display"></code>
+            <button type="button" id="btn-copy-code" class="btn secondary">Copy</button>
+          </div>
+        </label>
+        <p class="dialog-help">Enter that code on another device, below, to link it here.</p>
+
+        <label class="field">
+          <span>Link a device with a code</span>
+          <div class="code-row">
+            <input type="text" id="f-join-code" autocomplete="off" placeholder="Paste a code…" />
+            <button type="button" id="btn-join-code" class="btn secondary">Link</button>
+          </div>
+        </label>
+
+        <p id="sync-status" class="sync-status-text" aria-live="polite"></p>
+        <button type="button" id="btn-sync-disconnect" class="btn danger">Turn off sync</button>
+      </div>
+    </section>
+
     <div class="dialog-actions">
-      <button type="button" id="btn-sync-disconnect" class="btn danger" hidden>Disconnect</button>
       <span class="spacer"></span>
-      <button type="button" id="btn-sync-cancel" class="btn secondary">Cancel</button>
-      <button type="submit" id="btn-sync-save" class="btn primary">Save &amp; Sync</button>
+      <button type="button" id="btn-sync-cancel" class="btn secondary">Close</button>
     </div>
-  </form>
+  </div>
 </dialog>
 
 <script src="app.js"></script>
