@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-const BG = [0x65, 0x06, 0x3e]; // brand wine, matches app accent
+const BG = [0x7c, 0x1f, 0xa0]; // brand purple, matches app accent
 const WHITE = [245, 251, 245];
 
 function crc32(buf) {
