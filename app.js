@@ -623,6 +623,7 @@
     { id: 'crimson', label: 'Crimson', light: '#9c1c31', dark: '#e25a71' },
     { id: 'emerald', label: 'Emerald', light: '#127d44', dark: '#5ae29a' },
     { id: 'amber', label: 'Amber', light: '#9c641c', dark: '#e2a75a' },
+    { id: 'arml', label: 'ARML', light: '#961200', dark: '#f2705f' },
   ];
 
   function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'ihcc'; }
