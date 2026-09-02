@@ -464,15 +464,16 @@
 
   const THEME_KEY = 'feldkamp-theme';
   const THEMES = [
+    { id: 'ihcc', label: 'IHCC Green', light: '#1b7e23', dark: '#34b23e' },
     { id: 'plum', label: 'Plum', light: '#7c1fa0', dark: '#bb5de0' },
     { id: 'blue', label: 'Blue', light: '#1c4d9c', dark: '#5a8ee2' },
     { id: 'teal', label: 'Teal', light: '#127d79', dark: '#5ae2dd' },
     { id: 'crimson', label: 'Crimson', light: '#9c1c31', dark: '#e25a71' },
-    { id: 'green', label: 'Green', light: '#127d44', dark: '#5ae29a' },
+    { id: 'emerald', label: 'Emerald', light: '#127d44', dark: '#5ae29a' },
     { id: 'amber', label: 'Amber', light: '#9c641c', dark: '#e2a75a' },
   ];
 
-  function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'plum'; }
+  function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'ihcc'; }
 
   function applyTheme(id) {
     document.documentElement.setAttribute('data-theme', id);

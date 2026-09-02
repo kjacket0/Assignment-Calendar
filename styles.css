@@ -1,7 +1,7 @@
 :root {
   color-scheme: light dark;
-  --accent: #7c1fa0;
-  --accent-contrast: #fbf3fd;
+  --accent: #1b7e23;
+  --accent-contrast: #f5faf5;
   --bg: #f7f8f7;
   --surface: #ffffff;
   --text: #1a1f1e;
@@ -16,26 +16,34 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #16081c;
-    --surface: #2b0136;
-    --text: #f2e9f6;
-    --muted: #ac98b3;
-    --border: #3f2749;
-    --accent: #bb5de0;
-    --accent-contrast: #1c0722;
+    --bg: #081c0a;
+    --surface: #0d2b0f;
+    --text: #eaf0eb;
+    --muted: #9daf9e;
+    --border: #28482b;
+    --accent: #34b23e;
+    --accent-contrast: #0e2510;
     --overdue: #ff8a80;
   }
 }
 
 /*
- * Color themes: the base :root above is "Plum" (the default). Each theme
- * below only overrides the accent in light mode (the light background
- * stays neutral everywhere, on purpose — a colored light background
- * fights with dark body text) but gets a fuller tinted palette in dark
- * mode. Picked via the settings dialog, persisted to localStorage, and
- * applied before first paint by an inline script in index.html so there's
- * no flash of the wrong theme on load.
+ * Color themes: the base :root above is "IHCC Green" (the default). Each
+ * theme below only overrides the accent in light mode (the light
+ * background stays neutral everywhere, on purpose — a colored light
+ * background fights with dark body text) but gets a fuller tinted palette
+ * in dark mode. Picked via the settings dialog, persisted to
+ * localStorage, and applied before first paint by an inline script in
+ * index.html so there's no flash of the wrong theme on load.
  */
+:root[data-theme="plum"] { --accent: #7c1fa0; --accent-contrast: #fbf3fd; }
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="plum"] {
+    --bg: #16081c; --surface: #2b0136; --text: #f2e9f6; --muted: #ac98b3;
+    --border: #3f2749; --accent: #bb5de0; --accent-contrast: #1c0722;
+  }
+}
+
 :root[data-theme="blue"] { --accent: #1c4d9c; --accent-contrast: #f4f7fa; }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="blue"] {
@@ -60,9 +68,9 @@
   }
 }
 
-:root[data-theme="green"] { --accent: #127d44; --accent-contrast: #f4faf7; }
+:root[data-theme="emerald"] { --accent: #127d44; --accent-contrast: #f4faf7; }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme="green"] {
+  :root[data-theme="emerald"] {
     --bg: #081c11; --surface: #0e2f1d; --text: #e9f2ed; --muted: #98b3a5;
     --border: #274937; --accent: #5ae29a; --accent-contrast: #092014;
   }
