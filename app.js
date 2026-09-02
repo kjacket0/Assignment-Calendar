@@ -171,11 +171,20 @@
   const checklistGroups = document.getElementById('checklist-groups');
   const checklistEmpty = document.getElementById('checklist-empty');
 
-  // Subject names the user has manually collapsed in the checklist —
+  // Explicit collapse/expand choices the user has made per subject —
   // survives re-renders (data edits, sync) since it lives outside
   // renderChecklist() itself; not persisted across reloads on purpose,
   // same "always starts predictable" reasoning as the rest of the app.
-  const collapsedSubjects = new Set();
+  // Absent an override, a subject starts collapsed unless it currently
+  // has something visible in it, so a big class list defaults to showing
+  // only what's actually due instead of every subject sprawled open.
+  const subjectCollapseOverrides = new Map();
+
+  function isSubjectCollapsed(subject, hasVisibleItems) {
+    return subjectCollapseOverrides.has(subject)
+      ? subjectCollapseOverrides.get(subject)
+      : !hasVisibleItems;
+  }
 
   function refreshSubjectOptions() {
     const names = allSubjectNames();
@@ -280,22 +289,21 @@
       const countHtml = items.length
         ? `<span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>`
         : '';
-      const collapsed = collapsedSubjects.has(subject);
+      const collapsed = isSubjectCollapsed(subject, items.length > 0);
       const bodyId = `subject-body-${idx}`;
       group.innerHTML = `
-        <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}">
+        <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}" style="border-left-color:${color}">
+          <span class="subject-chevron" aria-hidden="true">▾</span>
           <span class="subject-dot" style="background:${color}"></span>
           <span class="subject-name">${escapeHtml(subject)}</span>
           ${countHtml}
-          <span class="subject-chevron" aria-hidden="true">▾</span>
         </button>
         <ul class="item-list" id="${bodyId}"${collapsed ? ' hidden' : ''}></ul>
       `;
       const header = group.querySelector('.subject-group-header');
       const ul = group.querySelector('ul');
       header.addEventListener('click', () => {
-        if (collapsedSubjects.has(subject)) collapsedSubjects.delete(subject);
-        else collapsedSubjects.add(subject);
+        subjectCollapseOverrides.set(subject, !collapsed);
         renderChecklist();
       });
       if (items.length) {

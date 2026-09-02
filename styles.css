@@ -496,20 +496,23 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 }
 
 /* The checklist's subject headers are collapse toggles, not static
-   headings — reset button chrome and give them the same full-width-row
-   press feedback as .item-body (a scale transform reads as a layout
-   glitch on something this wide; a background tint reads as a tap). */
+   headings — a filled bar (var(--border), the app's one token that's
+   reliably distinct from both --bg and --surface in every theme/mode)
+   plus a color-coded left edge makes each one read as a discrete,
+   pressable control rather than plain text with a stray icon off to the
+   side. Press feedback lightens to --surface (a scale transform reads as
+   a layout glitch on something this wide, per .item-body below). */
 .subject-group-header {
   width: 100%;
   min-height: 44px;
-  padding: 4px 6px;
-  margin-left: -6px;
-  margin-right: -6px;
-  border: none;
-  background: none;
-  color: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  background: var(--border);
+  color: var(--text);
   font-family: inherit;
-  font-weight: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
   text-align: left;
   border-radius: var(--radius);
   cursor: pointer;
@@ -522,13 +525,20 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 .subject-chevron {
   flex: none;
-  margin-left: auto;
-  color: var(--muted);
+  font-size: 0.8rem;
   transition: transform 0.15s ease;
 }
 
 .subject-group-header[aria-expanded="false"] .subject-chevron {
   transform: rotate(-90deg);
+}
+
+.subject-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .upcoming-overdue h2 {
@@ -537,9 +547,11 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 .subject-count {
   margin-left: auto;
+  flex: none;
   font-size: 0.72rem;
-  color: var(--muted);
-  background: var(--bg);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 8px;
