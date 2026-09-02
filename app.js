@@ -62,6 +62,21 @@
 
   let subjects = loadSubjects();
 
+  // Backfill: subjects didn't used to be their own persisted records, so
+  // data from before this existed (e.g. an assignment already filed under
+  // "Pathophysiology") needs a record created for it here once — otherwise
+  // the checklist shows the subject (it also derives names from
+  // assignments) while the Settings management list looks empty.
+  (function backfillSubjectsFromAssignments() {
+    let changed = false;
+    for (const a of visibleAssignments()) {
+      if (!a.subject || subjects.some((s) => s.name === a.subject && !s.deleted)) continue;
+      subjects.push({ id: uid(), name: a.subject, color: hashColor(a.subject), updatedAt: Date.now() });
+      changed = true;
+    }
+    if (changed) saveSubjects(subjects);
+  })();
+
   /* ---------- helpers ---------- */
 
   function uid() {
@@ -672,7 +687,7 @@
   function renderSubjectManageList() {
     const list = visibleSubjects().slice().sort((a, b) => a.name.localeCompare(b.name));
     if (!list.length) {
-      subjectManageList.innerHTML = '<li class="dialog-help subject-manage-empty">No subjects yet — add one, or it\'ll show up automatically the first time you assign it to something.</li>';
+      subjectManageList.innerHTML = '<li class="dialog-help subject-manage-empty">No subjects yet — add one from the Checklist tab, or it\'ll show up automatically the first time you assign it to something.</li>';
       return;
     }
     subjectManageList.innerHTML = '';
