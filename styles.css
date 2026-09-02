@@ -59,12 +59,6 @@
   --border: #274948; --accent: #5ae2dd; --accent-contrast: #09201f;
 }
 
-:root[data-theme="crimson"] { --accent: #9c1c31; --accent-contrast: #faf4f5; }
-:root[data-mode="dark"][data-theme="crimson"] {
-  --bg: #1c080b; --surface: #2f0e13; --text: #f2e9ea; --muted: #b3989d;
-  --border: #49272d; --accent: #e25a71; --accent-contrast: #20090d;
-}
-
 :root[data-theme="emerald"] { --accent: #127d44; --accent-contrast: #f4faf7; }
 :root[data-mode="dark"][data-theme="emerald"] {
   --bg: #081c11; --surface: #0e2f1d; --text: #e9f2ed; --muted: #98b3a5;
@@ -77,16 +71,13 @@
   --border: #493a27; --accent: #e2a75a; --accent-contrast: #201609;
 }
 
-/* A nod to ARML (slpfd-arml/ARML) — its actual brand red and neutral
-   charcoal dark surfaces, not the hue-tinted formula the other themes
-   use. --muted borrows ARML's own "dusty rose" for --text-muted. */
+/* ARML palette: map the app's shared tokens to ARML's corresponding
+  --slp-red, --bg-app, --bg-surface, --text-primary, --text-muted, and
+  --border-color values. */
 :root[data-theme="arml"] { --accent: #961200; --accent-contrast: #f2f2f2; }
 :root[data-mode="dark"][data-theme="arml"] {
-  /* bg-chrome as the page background, bg-surface (lighter) for cards —
-     matches the real app's much darker overall field, and fixes surface
-     having been darker than bg, backwards from every other theme here. */
-  --bg: #2A2A2A; --surface: #1f1f28; --text: #f2f2f2; --muted: #c9a0a0;
-  --border: #0D0D0F; --accent: #961200; --accent-contrast: #2a0a06;
+  --bg: #2A2A2A; --surface: #1F1F28; --text: #F2F2F2; --muted: #C9A0A0;
+  --border: #000000; --accent: #961200; --accent-contrast: #F2F2F2;
 }
 
 * { box-sizing: border-box; }
