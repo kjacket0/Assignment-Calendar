@@ -1,6 +1,6 @@
 # FELDKAMP
 
-**F**ield, **E**MS, **L**ab & **D**idactic **K**nowledge **A**ssignment
+**F**ield **E**MS **L**ab & **D**idactic **K**nowledge **A**ssignment
 **M**anagement **P**latform — a small, fast, offline-friendly PWA for
 tracking paramedic program assignments.
 
