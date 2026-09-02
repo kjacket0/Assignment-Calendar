@@ -14,17 +14,22 @@
   font-size: 16px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #081c0a;
-    --surface: #0d2b0f;
-    --text: #eaf0eb;
-    --muted: #9daf9e;
-    --border: #28482b;
-    --accent: #34b23e;
-    --accent-contrast: #0e2510;
-    --overdue: #ff8a80;
-  }
+/*
+ * Light/dark now resolves in JS (system preference by default, or an
+ * explicit override from the Settings pill) into a single data-mode
+ * attribute on <html>, applied before first paint by the same inline
+ * head script that handles data-theme — so every dark palette below is
+ * a plain attribute selector, no prefers-color-scheme media query.
+ */
+:root[data-mode="dark"] {
+  --bg: #081c0a;
+  --surface: #0d2b0f;
+  --text: #eaf0eb;
+  --muted: #9daf9e;
+  --border: #28482b;
+  --accent: #34b23e;
+  --accent-contrast: #0e2510;
+  --overdue: #ff8a80;
 }
 
 /*
@@ -37,65 +42,51 @@
  * index.html so there's no flash of the wrong theme on load.
  */
 :root[data-theme="plum"] { --accent: #7c1fa0; --accent-contrast: #fbf3fd; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="plum"] {
-    --bg: #16081c; --surface: #2b0136; --text: #f2e9f6; --muted: #ac98b3;
-    --border: #3f2749; --accent: #bb5de0; --accent-contrast: #1c0722;
-  }
+:root[data-mode="dark"][data-theme="plum"] {
+  --bg: #16081c; --surface: #2b0136; --text: #f2e9f6; --muted: #ac98b3;
+  --border: #3f2749; --accent: #bb5de0; --accent-contrast: #1c0722;
 }
 
 :root[data-theme="blue"] { --accent: #1c4d9c; --accent-contrast: #f4f7fa; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="blue"] {
-    --bg: #08101c; --surface: #0e1b2f; --text: #e9ecf2; --muted: #98a3b3;
-    --border: #273449; --accent: #5a8ee2; --accent-contrast: #091220;
-  }
+:root[data-mode="dark"][data-theme="blue"] {
+  --bg: #08101c; --surface: #0e1b2f; --text: #e9ecf2; --muted: #98a3b3;
+  --border: #273449; --accent: #5a8ee2; --accent-contrast: #091220;
 }
 
 :root[data-theme="teal"] { --accent: #127d79; --accent-contrast: #f4fafa; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="teal"] {
-    --bg: #081c1b; --surface: #0e2f2e; --text: #e9f2f1; --muted: #98b3b2;
-    --border: #274948; --accent: #5ae2dd; --accent-contrast: #09201f;
-  }
+:root[data-mode="dark"][data-theme="teal"] {
+  --bg: #081c1b; --surface: #0e2f2e; --text: #e9f2f1; --muted: #98b3b2;
+  --border: #274948; --accent: #5ae2dd; --accent-contrast: #09201f;
 }
 
 :root[data-theme="crimson"] { --accent: #9c1c31; --accent-contrast: #faf4f5; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="crimson"] {
-    --bg: #1c080b; --surface: #2f0e13; --text: #f2e9ea; --muted: #b3989d;
-    --border: #49272d; --accent: #e25a71; --accent-contrast: #20090d;
-  }
+:root[data-mode="dark"][data-theme="crimson"] {
+  --bg: #1c080b; --surface: #2f0e13; --text: #f2e9ea; --muted: #b3989d;
+  --border: #49272d; --accent: #e25a71; --accent-contrast: #20090d;
 }
 
 :root[data-theme="emerald"] { --accent: #127d44; --accent-contrast: #f4faf7; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="emerald"] {
-    --bg: #081c11; --surface: #0e2f1d; --text: #e9f2ed; --muted: #98b3a5;
-    --border: #274937; --accent: #5ae29a; --accent-contrast: #092014;
-  }
+:root[data-mode="dark"][data-theme="emerald"] {
+  --bg: #081c11; --surface: #0e2f1d; --text: #e9f2ed; --muted: #98b3a5;
+  --border: #274937; --accent: #5ae29a; --accent-contrast: #092014;
 }
 
 :root[data-theme="amber"] { --accent: #9c641c; --accent-contrast: #faf8f4; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="amber"] {
-    --bg: #1c1308; --surface: #2f210e; --text: #f2eee9; --muted: #b3a898;
-    --border: #493a27; --accent: #e2a75a; --accent-contrast: #201609;
-  }
+:root[data-mode="dark"][data-theme="amber"] {
+  --bg: #1c1308; --surface: #2f210e; --text: #f2eee9; --muted: #b3a898;
+  --border: #493a27; --accent: #e2a75a; --accent-contrast: #201609;
 }
 
 /* A nod to ARML (slpfd-arml/ARML) — its actual brand red and neutral
    charcoal dark surfaces, not the hue-tinted formula the other themes
    use. --muted borrows ARML's own "dusty rose" for --text-muted. */
 :root[data-theme="arml"] { --accent: #961200; --accent-contrast: #f2f2f2; }
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="arml"] {
-    /* bg-chrome as the page background, bg-surface (lighter) for cards —
-       matches the real app's much darker overall field, and fixes surface
-       having been darker than bg, backwards from every other theme here. */
-    --bg: #0d0d0f; --surface: #1f1f28; --text: #f2f2f2; --muted: #c9a0a0;
-    --border: #333333; --accent: #f2705f; --accent-contrast: #2a0a06;
-  }
+:root[data-mode="dark"][data-theme="arml"] {
+  /* bg-chrome as the page background, bg-surface (lighter) for cards —
+     matches the real app's much darker overall field, and fixes surface
+     having been darker than bg, backwards from every other theme here. */
+  --bg: #0d0d0f; --surface: #1f1f28; --text: #f2f2f2; --muted: #c9a0a0;
+  --border: #333333; --accent: #f2705f; --accent-contrast: #2a0a06;
 }
 
 * { box-sizing: border-box; }
@@ -242,6 +233,71 @@ body {
   border-color: var(--text);
   box-shadow: 0 0 0 2px var(--surface);
 }
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 0.9rem;
+}
+
+/* Light/dark pill, modeled on ARML's own theme-toggle: a sliding knob is
+   the real signal (same as any OS-level switch); the moon/sun icons
+   only differ in which one sits legibly on the knob, not in hue. */
+.theme-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.theme-toggle-track {
+  position: relative;
+  width: 62px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+}
+
+.theme-toggle-knob {
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: left 0.2s ease;
+}
+
+:root[data-mode="light"] .theme-toggle-knob {
+  left: 35px;
+}
+
+.theme-toggle svg {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* Whichever icon the knob currently sits under gets accent-contrast
+   (readable on the colored knob); the other stays --muted on the plain
+   track — position is the primary signal, this just keeps it legible. */
+:root[data-mode="dark"] .theme-toggle .moon-icon { color: var(--accent-contrast); }
+:root[data-mode="light"] .theme-toggle .sun-icon { color: var(--accent-contrast); }
 
 .list-actions {
   display: flex;
@@ -454,12 +510,13 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 .fab:active,
 .tab:active,
 .theme-swatch:active,
-.cal-day:active {
+.cal-day:active,
+.theme-toggle:active {
   transform: scale(0.96);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body {
+  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body, .theme-toggle, .theme-toggle-knob {
     transition: none;
   }
 }

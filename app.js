@@ -638,13 +638,13 @@
 
   function renderThemeSwatches() {
     const current = getStoredTheme();
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = resolveMode() === 'dark';
     themeSwatchesEl.innerHTML = '';
     for (const t of THEMES) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'theme-swatch';
-      btn.style.setProperty('--swatch', prefersDark ? t.dark : t.light);
+      btn.style.setProperty('--swatch', isDark ? t.dark : t.light);
       btn.setAttribute('aria-label', t.label);
       btn.setAttribute('aria-pressed', String(t.id === current));
       btn.title = t.label;
@@ -653,6 +653,55 @@
     }
   }
 
+  /* ---------- light/dark override ----------
+   * Follows the system by default (same as before this existed); touching
+   * the pill in Settings pins an explicit choice that overrides the
+   * system from then on — same "only the non-default state gets written
+   * to storage" idea as ARML's own toggle, just built on a system-
+   * following default instead of ARML's fixed dark default.
+   */
+  const MODE_KEY = 'feldkamp-mode';
+  const darkMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const modeToggleBtn = document.getElementById('mode-toggle');
+
+  function resolveMode() {
+    return localStorage.getItem(MODE_KEY) || (darkMediaQuery.matches ? 'dark' : 'light');
+  }
+
+  function applyMode(mode) {
+    document.documentElement.setAttribute('data-mode', mode);
+  }
+
+  function renderModeToggle() {
+    const isLight = resolveMode() === 'light';
+    const nextLabel = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+    modeToggleBtn.setAttribute('aria-pressed', String(isLight));
+    modeToggleBtn.setAttribute('aria-label', nextLabel);
+    modeToggleBtn.title = nextLabel;
+  }
+
+  function setExplicitMode(mode) {
+    localStorage.setItem(MODE_KEY, mode);
+    applyMode(mode);
+    renderModeToggle();
+    renderThemeSwatches();
+  }
+
+  modeToggleBtn.addEventListener('click', () => {
+    setExplicitMode(resolveMode() === 'dark' ? 'light' : 'dark');
+  });
+
+  // Stay in sync with the OS/browser setting for as long as nobody has
+  // explicitly overridden it.
+  darkMediaQuery.addEventListener('change', () => {
+    if (localStorage.getItem(MODE_KEY)) return;
+    applyMode(resolveMode());
+    renderModeToggle();
+    renderThemeSwatches();
+  });
+
+  applyMode(resolveMode());
+  renderModeToggle();
   renderThemeSwatches();
 
   /* ---------- sync (Firebase Firestore) ---------- */
