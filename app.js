@@ -37,16 +37,72 @@
 
   let assignments = loadAssignments();
 
+  /* ---------- subjects ----------
+   * Subjects are their own persisted entities (name + color), separate
+   * from assignments, so a class list can be set up before anything is
+   * assigned yet, keeps its chosen color, and doesn't disappear from the
+   * checklist just because everything under it is done or deleted.
+   */
+
+  const SUBJECTS_KEY = 'feldkamp-subjects-v1';
+
+  function loadSubjects() {
+    const list = readJson(SUBJECTS_KEY, []);
+    if (!Array.isArray(list)) return [];
+    return list.map((s) => (s && s.updatedAt ? s : { ...s, updatedAt: Date.now() }));
+  }
+
+  function saveSubjects(list) {
+    localStorage.setItem(SUBJECTS_KEY, JSON.stringify(list));
+  }
+
+  function visibleSubjects() {
+    return subjects.filter((s) => !s.deleted);
+  }
+
+  let subjects = loadSubjects();
+
   /* ---------- helpers ---------- */
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
-  function subjectColor(subject) {
+  function hashColor(name) {
     let hash = 0;
-    for (let i = 0; i < subject.length; i++) hash = (hash * 31 + subject.charCodeAt(i)) >>> 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
     return SUBJECT_PALETTE[hash % SUBJECT_PALETTE.length];
+  }
+
+  function subjectColor(name) {
+    const existing = visibleSubjects().find((s) => s.name === name);
+    return existing ? existing.color : hashColor(name);
+  }
+
+  // Auto-creates a persisted subject record the first time an assignment
+  // references a subject name with none yet, so typing a brand-new subject
+  // straight into the assignment form still works without a trip through
+  // Settings first — it just gets an auto-picked color instead of a chosen one.
+  function ensureSubject(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (subjects.some((s) => s.name === trimmed && !s.deleted)) return;
+    const revived = subjects.find((s) => s.name === trimmed && s.deleted);
+    if (revived) {
+      revived.deleted = false;
+      revived.updatedAt = Date.now();
+    } else {
+      subjects.push({ id: uid(), name: trimmed, color: hashColor(trimmed), updatedAt: Date.now() });
+    }
+    saveSubjects(subjects);
+  }
+
+  // The union of subjects that exist on purpose (added ahead of time or via
+  // an assignment) — sorted for consistent display in dropdowns and groups.
+  function allSubjectNames() {
+    const names = new Set(visibleSubjects().map((s) => s.name));
+    for (const a of visibleAssignments()) names.add(a.subject);
+    return [...names].sort((a, b) => a.localeCompare(b));
   }
 
   function todayStr() {
@@ -70,10 +126,6 @@
   function isOverdue(a) {
     if (a.done) return false;
     return a.date < todayStr();
-  }
-
-  function uniqueSubjects() {
-    return [...new Set(visibleAssignments().map((a) => a.subject))].sort((a, b) => a.localeCompare(b));
   }
 
   /* ---------- tabs ---------- */
@@ -103,14 +155,14 @@
   const checklistEmpty = document.getElementById('checklist-empty');
 
   function refreshSubjectOptions() {
-    const subjects = uniqueSubjects();
+    const names = allSubjectNames();
     const current = filterSubject.value;
     filterSubject.innerHTML = '<option value="">All subjects</option>' +
-      subjects.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-    if (subjects.includes(current)) filterSubject.value = current;
+      names.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    if (names.includes(current)) filterSubject.value = current;
 
     const datalist = document.getElementById('subject-list');
-    datalist.innerHTML = subjects.map((s) => `<option value="${escapeHtml(s)}">`).join('');
+    datalist.innerHTML = names.map((s) => `<option value="${escapeHtml(s)}">`).join('');
   }
 
   function escapeHtml(str) {
@@ -181,38 +233,27 @@
     const clearFilterBtn = document.getElementById('btn-clear-filter');
 
     const visible = visibleAssignments();
-    let list = visible;
-    if (subjectFilter) list = list.filter((a) => a.subject === subjectFilter);
-    if (hideDone) list = list.filter((a) => !a.done);
-
     checklistGroups.innerHTML = '';
     clearFilterBtn.hidden = !(subjectFilter || hideDone);
 
-    if (visible.length === 0) {
+    if (visible.length === 0 && visibleSubjects().length === 0) {
       checklistEmpty.hidden = false;
       checklistEmpty.textContent = 'No assignments yet. Tap "+ Add" to get started.';
       return;
     }
 
-    if (list.length === 0) {
-      checklistEmpty.hidden = false;
-      checklistEmpty.textContent = subjectFilter
-        ? 'No assignments match this filter.'
-        : 'No visible assignments. Try showing completed items.';
-      return;
-    }
-
     checklistEmpty.hidden = true;
 
-    const bySubject = new Map();
-    for (const a of list) {
-      if (!bySubject.has(a.subject)) bySubject.set(a.subject, []);
-      bySubject.get(a.subject).push(a);
-    }
-
-    const subjects = [...bySubject.keys()].sort((a, b) => a.localeCompare(b));
-    for (const subject of subjects) {
-      const items = bySubject.get(subject).sort((a, b) => {
+    // A subject group is shown for every subject that exists on purpose —
+    // even with zero (or zero currently-visible) items — so a class list
+    // set up ahead of time, or one that's simply all caught up, sticks
+    // around instead of vanishing.
+    const names = subjectFilter ? [subjectFilter] : allSubjectNames();
+    for (const subject of names) {
+      let items = visible.filter((a) => a.subject === subject);
+      const hadAny = items.length > 0;
+      if (hideDone) items = items.filter((a) => !a.done);
+      items.sort((a, b) => {
         if (a.done !== b.done) return a.done ? 1 : -1;
         return (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''));
       });
@@ -220,17 +261,26 @@
       const group = document.createElement('div');
       group.className = 'subject-group';
       const color = subjectColor(subject);
-      const count = `${items.length} assignment${items.length === 1 ? '' : 's'}`;
+      const countHtml = items.length
+        ? `<span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>`
+        : '';
       group.innerHTML = `
         <h2>
           <span class="subject-dot" style="background:${color}"></span>
           <span>${escapeHtml(subject)}</span>
-          <span class="subject-count">${count}</span>
+          ${countHtml}
         </h2>
         <ul class="item-list"></ul>
       `;
       const ul = group.querySelector('ul');
-      for (const a of items) ul.appendChild(renderItem(a));
+      if (items.length) {
+        for (const a of items) ul.appendChild(renderItem(a));
+      } else {
+        const li = document.createElement('li');
+        li.className = 'subject-empty';
+        li.textContent = hadAny ? 'All caught up — nothing pending.' : 'No assignments yet.';
+        ul.appendChild(li);
+      }
       checklistGroups.appendChild(group);
     }
   }
@@ -542,10 +592,12 @@
         updatedAt: Date.now(),
       });
     }
+    ensureSubject(fSubject.value.trim());
     saveAssignments(assignments);
     dialog.close();
     renderChecklist();
     renderCalendar();
+    renderSubjectManageList();
     scheduleSync();
   });
 
@@ -567,6 +619,140 @@
   });
 
   dialog.addEventListener('cancel', () => dialog.close());
+
+  /* ---------- subject management ---------- */
+
+  const subjectDialog = document.getElementById('subject-dialog');
+  const subjectForm = document.getElementById('subject-form');
+  const subjectDialogTitle = document.getElementById('subject-dialog-title');
+  const fsId = document.getElementById('fs-id');
+  const fsName = document.getElementById('fs-name');
+  const subjectColorSwatches = document.getElementById('subject-color-swatches');
+  const btnSubjectDelete = document.getElementById('btn-subject-delete');
+  const subjectManageList = document.getElementById('subject-manage-list');
+
+  let pickedSubjectColor = SUBJECT_PALETTE[0];
+
+  function renderSubjectColorSwatches() {
+    subjectColorSwatches.innerHTML = '';
+    for (const color of SUBJECT_PALETTE) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'theme-swatch';
+      btn.style.setProperty('--swatch', color);
+      btn.setAttribute('aria-label', color);
+      btn.setAttribute('aria-pressed', String(color === pickedSubjectColor));
+      btn.addEventListener('click', () => {
+        pickedSubjectColor = color;
+        renderSubjectColorSwatches();
+      });
+      subjectColorSwatches.appendChild(btn);
+    }
+  }
+
+  function openSubjectDialog(subject) {
+    subjectForm.reset();
+    if (subject) {
+      subjectDialogTitle.textContent = 'Edit subject';
+      fsId.value = subject.id;
+      fsName.value = subject.name;
+      pickedSubjectColor = subject.color;
+      btnSubjectDelete.hidden = false;
+    } else {
+      subjectDialogTitle.textContent = 'Add subject';
+      fsId.value = '';
+      pickedSubjectColor = SUBJECT_PALETTE[randomInt(SUBJECT_PALETTE.length)];
+      btnSubjectDelete.hidden = true;
+    }
+    renderSubjectColorSwatches();
+    subjectDialog.showModal();
+    fsName.focus();
+  }
+
+  function renderSubjectManageList() {
+    const list = visibleSubjects().slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (!list.length) {
+      subjectManageList.innerHTML = '<li class="dialog-help subject-manage-empty">No subjects yet — add one, or it\'ll show up automatically the first time you assign it to something.</li>';
+      return;
+    }
+    subjectManageList.innerHTML = '';
+    for (const s of list) {
+      const li = document.createElement('li');
+      li.className = 'subject-manage-row';
+      li.innerHTML = `
+        <span class="subject-dot" style="background:${s.color}"></span>
+        <button type="button" class="subject-manage-name">${escapeHtml(s.name)}</button>
+        <button type="button" class="btn icon-btn" aria-label="Delete ${escapeHtml(s.name)}" title="Delete">×</button>
+      `;
+      li.querySelector('.subject-manage-name').addEventListener('click', () => openSubjectDialog(s));
+      li.querySelector('.btn.icon-btn').addEventListener('click', () => deleteSubject(s));
+      subjectManageList.appendChild(li);
+    }
+  }
+
+  // Subjects are never cascade-deleted with their assignments — those
+  // reference a subject by name, not id, so removing the subject record
+  // just stops it being pinned to the checklist; it reappears on its own
+  // if it still has assignments (see allSubjectNames()).
+  async function deleteSubject(s) {
+    if (!(await appConfirm(`Delete "${s.name}"? Its assignments won't be deleted — the subject just stops being pinned to the list.`))) return false;
+    s.deleted = true;
+    s.updatedAt = Date.now();
+    saveSubjects(subjects);
+    renderChecklist();
+    renderCalendar();
+    renderSubjectManageList();
+    scheduleSync();
+    return true;
+  }
+
+  document.getElementById('btn-subject-add').addEventListener('click', () => openSubjectDialog(null));
+  document.getElementById('btn-subject-cancel').addEventListener('click', () => subjectDialog.close());
+  subjectDialog.addEventListener('cancel', () => subjectDialog.close());
+
+  subjectForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = fsName.value.trim();
+    if (!name) return;
+
+    if (fsId.value) {
+      const s = subjects.find((x) => x.id === fsId.value);
+      if (s) {
+        if (s.name !== name) {
+          // Cascade the rename onto every assignment filed under the old
+          // name, since assignments reference subjects by name, not id.
+          for (const a of assignments) {
+            if (a.subject === s.name) { a.subject = name; a.updatedAt = Date.now(); }
+          }
+          saveAssignments(assignments);
+        }
+        s.name = name;
+        s.color = pickedSubjectColor;
+        s.updatedAt = Date.now();
+      }
+    } else {
+      const existing = subjects.find((x) => x.name === name && !x.deleted);
+      if (existing) {
+        existing.color = pickedSubjectColor;
+        existing.updatedAt = Date.now();
+      } else {
+        subjects.push({ id: uid(), name, color: pickedSubjectColor, updatedAt: Date.now() });
+      }
+    }
+    saveSubjects(subjects);
+    subjectDialog.close();
+    renderChecklist();
+    renderCalendar();
+    renderSubjectManageList();
+    scheduleSync();
+  });
+
+  btnSubjectDelete.addEventListener('click', async () => {
+    if (!fsId.value) return;
+    const s = subjects.find((x) => x.id === fsId.value);
+    if (!s) return;
+    if (await deleteSubject(s)) subjectDialog.close();
+  });
 
   /* ---------- .ics export ---------- */
 
@@ -870,7 +1056,7 @@
 
   async function pullRemote(code) {
     const res = await firestoreFetch(`/syncCodes/${code}`);
-    if (res.status === 404) return { found: false, name: '', assignments: [] };
+    if (res.status === 404) return { found: false, name: '', assignments: [], subjects: [] };
     if (!res.ok) throw new Error(await firestoreErrorMessage(res));
     const doc = await res.json();
     const raw = doc.fields && doc.fields.data && doc.fields.data.stringValue;
@@ -880,16 +1066,17 @@
         found: true,
         name: parsed.name || '',
         assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
+        subjects: Array.isArray(parsed.subjects) ? parsed.subjects : [],
       };
     } catch {
-      return { found: true, name: '', assignments: [] };
+      return { found: true, name: '', assignments: [], subjects: [] };
     }
   }
 
-  async function pushRemote(code, name, list) {
+  async function pushRemote(code, name, list, subjectList) {
     const res = await firestoreFetch(`/syncCodes/${code}`, {
       method: 'PATCH',
-      body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify({ name, assignments: list }) } } }),
+      body: JSON.stringify({ fields: { data: { stringValue: JSON.stringify({ name, assignments: list, subjects: subjectList }) } } }),
     });
     if (!res.ok) throw new Error(await firestoreErrorMessage(res));
   }
@@ -899,7 +1086,8 @@
     return list.filter((a) => !a.deleted || (a.updatedAt || 0) > cutoff);
   }
 
-  function mergeAssignments(localList, remoteList) {
+  // Last-write-wins merge by id, used for both assignments and subjects.
+  function mergeById(localList, remoteList) {
     const byId = new Map();
     for (const a of remoteList) byId.set(a.id, a);
     for (const a of localList) {
@@ -938,13 +1126,24 @@
     setSyncButtonBusy(true);
     try {
       const remote = await pullRemote(code);
-      const merged = mergeAssignments(assignments, remote.assignments);
+      const mergedAssignments = mergeById(assignments, remote.assignments);
+      const mergedSubjects = mergeById(subjects, remote.subjects);
 
-      if (stableKey(merged) !== stableKey(assignments)) {
-        assignments = merged;
+      let changed = false;
+      if (stableKey(mergedAssignments) !== stableKey(assignments)) {
+        assignments = mergedAssignments;
         saveAssignments(assignments);
+        changed = true;
+      }
+      if (stableKey(mergedSubjects) !== stableKey(subjects)) {
+        subjects = mergedSubjects;
+        saveSubjects(subjects);
+        changed = true;
+      }
+      if (changed) {
         renderChecklist();
         renderCalendar();
+        renderSubjectManageList();
       }
 
       const lists = getLists();
@@ -958,8 +1157,10 @@
         saveLists(lists);
       }
 
-      if (stableKey(merged) !== stableKey(remote.assignments) || entry.name !== remote.name) {
-        await pushRemote(code, entry.name, merged);
+      if (stableKey(mergedAssignments) !== stableKey(remote.assignments) ||
+          stableKey(mergedSubjects) !== stableKey(remote.subjects) ||
+          entry.name !== remote.name) {
+        await pushRemote(code, entry.name, mergedAssignments, mergedSubjects);
       }
       localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
     } catch (err) {
@@ -984,19 +1185,24 @@
       const currentCode = getActiveCode();
       if (currentCode) {
         const remoteCurrent = await pullRemote(currentCode);
-        const mergedCurrent = mergeAssignments(assignments, remoteCurrent.assignments);
+        const mergedAssignments = mergeById(assignments, remoteCurrent.assignments);
+        const mergedSubjects = mergeById(subjects, remoteCurrent.subjects);
         const currentEntry = getLists().find((l) => l.code === currentCode);
-        if (stableKey(mergedCurrent) !== stableKey(remoteCurrent.assignments)) {
-          await pushRemote(currentCode, currentEntry ? currentEntry.name : '', mergedCurrent);
+        if (stableKey(mergedAssignments) !== stableKey(remoteCurrent.assignments) ||
+            stableKey(mergedSubjects) !== stableKey(remoteCurrent.subjects)) {
+          await pushRemote(currentCode, currentEntry ? currentEntry.name : '', mergedAssignments, mergedSubjects);
         }
       }
       const remoteNew = await pullRemote(newCode);
       assignments = pruneTombstones(remoteNew.assignments);
+      subjects = pruneTombstones(remoteNew.subjects);
       saveAssignments(assignments);
+      saveSubjects(subjects);
       setActiveCode(newCode);
       localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
       renderChecklist();
       renderCalendar();
+      renderSubjectManageList();
     } catch (err) {
       lastSyncError = err.message || 'Failed to switch lists';
     } finally {
@@ -1138,6 +1344,7 @@
 
   function openSyncDialog() {
     renderSyncSections();
+    renderSubjectManageList();
     syncDialog.showModal();
   }
 
@@ -1198,12 +1405,7 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.getRegistrations()
-        .then((registrations) => Promise.all(registrations.map((reg) => reg.unregister())))
-        .catch(() => {})
-        .finally(() => {
-          navigator.serviceWorker.register('sw.js?v=3').catch(() => {});
-        });
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     });
 
     // controllerchange also fires on a brand-new visit's very first

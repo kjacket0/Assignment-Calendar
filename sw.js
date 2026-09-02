@@ -1,9 +1,9 @@
-const CACHE_NAME = 'feldkamp-v3';
+const CACHE_NAME = 'feldkamp-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './styles.css?v=2',
-  './app.js?v=2',
+  './styles.css',
+  './app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

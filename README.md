@@ -13,6 +13,10 @@ in Firestore.
 
 - **Checklist view** — assignments grouped by subject, sorted by due date,
   overdue items flagged, completed items collapsible.
+- **Subjects are their own thing** — add your class list ahead of time (with
+  a color of your choosing) from Settings, independent of any assignment.
+  Subjects stick around even with nothing due, or once everything under them
+  is done — they only go away if you delete them.
 - **Calendar view** — month grid with a dot per subject on days with something
   due; tap a day to see its assignments.
 - **Export to Calendar** — one tap turns your current list into a `.ics` file

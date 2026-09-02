@@ -76,8 +76,15 @@
   --border-color values. */
 :root[data-theme="arml"] { --accent: #961200; --accent-contrast: #f2f2f2; }
 :root[data-mode="dark"][data-theme="arml"] {
+  /* Accent lightened to #f2705f (same value already used for this theme's
+     dark-mode swatch preview in app.js) — the raw brand red reads at
+     ~1.6:1 against this --bg/--surface, well under WCAG AA, and --accent
+     is used bare (not just on its own filled background) for the
+     selected-tab underline, the calendar's today-cell border, and the
+     global focus ring. --accent-contrast flips to a dark reddish-black
+     to stay readable on top of the now-lighter accent. */
   --bg: #2A2A2A; --surface: #1F1F28; --text: #F2F2F2; --muted: #C9A0A0;
-  --border: #000000; --accent: #961200; --accent-contrast: #F2F2F2;
+  --border: #000000; --accent: #f2705f; --accent-contrast: #2a0a06;
 }
 
 * { box-sizing: border-box; }
@@ -575,6 +582,61 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   color: var(--muted);
   text-align: center;
   padding: 40px 16px;
+}
+
+.subject-empty {
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.subject-manage-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subject-manage-empty {
+  padding: 0;
+}
+
+.subject-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subject-manage-row .subject-dot {
+  width: 14px;
+  height: 14px;
+}
+
+.subject-manage-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color 0.1s ease;
+}
+
+.subject-manage-name:active {
+  background: var(--bg);
 }
 
 .btn {
