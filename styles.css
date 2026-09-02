@@ -431,7 +431,6 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
     align-items: flex-end;
   }
 
-  .field-inline,
   .checkbox-inline {
     min-height: 48px;
   }
@@ -467,7 +466,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   margin-bottom: 16px;
 }
 
-.field-inline, .checkbox-inline {
+.checkbox-inline {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -481,27 +480,55 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   padding-bottom: 7px;
 }
 
-.field-inline select {
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  min-height: 44px;
-}
-
 .checkbox-inline input { width: 20px; height: 20px; flex: none; }
 
 .subject-group {
   margin-bottom: 20px;
 }
 
-.subject-group h2 {
+.subject-group h2,
+.subject-group-header {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 1rem;
   margin: 0 0 8px;
+}
+
+/* The checklist's subject headers are collapse toggles, not static
+   headings — reset button chrome and give them the same full-width-row
+   press feedback as .item-body (a scale transform reads as a layout
+   glitch on something this wide; a background tint reads as a tap). */
+.subject-group-header {
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  text-align: left;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.subject-group-header:active {
+  background: var(--surface);
+}
+
+.subject-chevron {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.subject-group-header[aria-expanded="false"] .subject-chevron {
+  transform: rotate(-90deg);
 }
 
 .upcoming-overdue h2 {
@@ -710,7 +737,8 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body, .theme-toggle, .theme-toggle-knob, .dialog-close {
+  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body, .theme-toggle, .theme-toggle-knob, .dialog-close,
+  .subject-group-header, .subject-chevron {
     transition: none;
   }
 }

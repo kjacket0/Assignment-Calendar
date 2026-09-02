@@ -167,18 +167,18 @@
 
   /* ---------- checklist view ---------- */
 
-  const filterSubject = document.getElementById('filter-subject');
   const hideCompleted = document.getElementById('hide-completed');
   const checklistGroups = document.getElementById('checklist-groups');
   const checklistEmpty = document.getElementById('checklist-empty');
 
+  // Subject names the user has manually collapsed in the checklist —
+  // survives re-renders (data edits, sync) since it lives outside
+  // renderChecklist() itself; not persisted across reloads on purpose,
+  // same "always starts predictable" reasoning as the rest of the app.
+  const collapsedSubjects = new Set();
+
   function refreshSubjectOptions() {
     const names = allSubjectNames();
-    const current = filterSubject.value;
-    filterSubject.innerHTML = '<option value="">All subjects</option>' +
-      names.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-    if (names.includes(current)) filterSubject.value = current;
-
     const datalist = document.getElementById('subject-list');
     datalist.innerHTML = names.map((s) => `<option value="${escapeHtml(s)}">`).join('');
   }
@@ -246,13 +246,10 @@
 
   function renderChecklist() {
     refreshSubjectOptions();
-    const subjectFilter = filterSubject.value;
     const hideDone = hideCompleted.checked;
-    const clearFilterBtn = document.getElementById('btn-clear-filter');
 
     const visible = visibleAssignments();
     checklistGroups.innerHTML = '';
-    clearFilterBtn.hidden = !(subjectFilter || hideDone);
 
     if (visible.length === 0 && visibleSubjects().length === 0) {
       checklistEmpty.hidden = false;
@@ -265,9 +262,10 @@
     // A subject group is shown for every subject that exists on purpose —
     // even with zero (or zero currently-visible) items — so a class list
     // set up ahead of time, or one that's simply all caught up, sticks
-    // around instead of vanishing.
-    const names = subjectFilter ? [subjectFilter] : allSubjectNames();
-    for (const subject of names) {
+    // around instead of vanishing. Each one collapses independently
+    // instead of a dropdown narrowing the whole list to one at a time.
+    const names = allSubjectNames();
+    names.forEach((subject, idx) => {
       let items = visible.filter((a) => a.subject === subject);
       const hadAny = items.length > 0;
       if (hideDone) items = items.filter((a) => !a.done);
@@ -282,15 +280,24 @@
       const countHtml = items.length
         ? `<span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>`
         : '';
+      const collapsed = collapsedSubjects.has(subject);
+      const bodyId = `subject-body-${idx}`;
       group.innerHTML = `
-        <h2>
+        <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}">
           <span class="subject-dot" style="background:${color}"></span>
-          <span>${escapeHtml(subject)}</span>
+          <span class="subject-name">${escapeHtml(subject)}</span>
           ${countHtml}
-        </h2>
-        <ul class="item-list"></ul>
+          <span class="subject-chevron" aria-hidden="true">▾</span>
+        </button>
+        <ul class="item-list" id="${bodyId}"${collapsed ? ' hidden' : ''}></ul>
       `;
+      const header = group.querySelector('.subject-group-header');
       const ul = group.querySelector('ul');
+      header.addEventListener('click', () => {
+        if (collapsedSubjects.has(subject)) collapsedSubjects.delete(subject);
+        else collapsedSubjects.add(subject);
+        renderChecklist();
+      });
       if (items.length) {
         for (const a of items) ul.appendChild(renderItem(a));
       } else {
@@ -300,7 +307,7 @@
         ul.appendChild(li);
       }
       checklistGroups.appendChild(group);
-    }
+    });
   }
 
   function renderItem(a, opts = {}) {
@@ -347,13 +354,7 @@
     return li;
   }
 
-  filterSubject.addEventListener('change', renderChecklist);
   hideCompleted.addEventListener('change', renderChecklist);
-  document.getElementById('btn-clear-filter').addEventListener('click', () => {
-    filterSubject.value = '';
-    hideCompleted.checked = false;
-    renderChecklist();
-  });
 
   /* ---------- upcoming view ----------
    * A second, time-ordered cut of the same data the checklist groups by
