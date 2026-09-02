@@ -808,11 +808,11 @@
     const now = new Date();
     const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//FELDKAMP//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Assignment Calendar//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
 
     for (const a of list) {
       lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${a.id}@feldkamp.local`);
+      lines.push(`UID:${a.id}@assignment-calendar.local`);
       lines.push(`DTSTAMP:${stamp}`);
       if (a.time) {
         lines.push(`DTSTART:${toIcsDateTime(a.date, a.time)}`);
@@ -841,7 +841,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `feldkamp-assignments-${todayStr()}.ics`;
+    a.download = `assignment-calendar-${todayStr()}.ics`;
     document.body.appendChild(a);
     a.click();
     a.remove();

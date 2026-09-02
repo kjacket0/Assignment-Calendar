@@ -1,8 +1,7 @@
-# FELDKAMP
+# Assignment Calendar
 
-**F**ield **E**MS **L**ab & **D**idactic **K**nowledge **A**ssignment
-**M**anagement **P**latform — a small, fast, offline-friendly PWA for
-tracking paramedic program assignments.
+A small, fast, offline-friendly PWA for tracking paramedic program
+assignments.
 
 No build step, no frameworks — just static HTML/CSS/JS backed by a small
 Firestore database for optional sync. All data lives in `localStorage` on
