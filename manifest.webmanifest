@@ -1,7 +1,7 @@
 {
-  "name": "FELDKAMP — Field, EMS, Lab & Didactic Knowledge Assignment Management Platform",
+  "name": "FELDKAMP — Field EMS Lab & Didactic Knowledge Assignment Management Platform",
   "short_name": "FELDKAMP",
-  "description": "Offline-friendly checklist and calendar for paramedic program assignments.",
+  "description": "Offline-Friendly Assignment Checklist and Calendar",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
