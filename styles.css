@@ -112,12 +112,21 @@
   background: var(--bg);
 }
 
+/* Stops the iOS Safari/PWA elastic overscroll ("rubber-band") bounce —
+   without it, pulling past the top drags the whole page (header included)
+   down and reveals background behind it, since nothing here is actually
+   fixed in place. Supported since Safari 16.4; harmless no-op elsewhere. */
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  overscroll-behavior-y: none;
 }
 
 /*
