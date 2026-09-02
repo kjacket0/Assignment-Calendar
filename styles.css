@@ -823,7 +823,9 @@ dialog {
 dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
 
 /* Floating close button for dialogs long enough to need an exit that
-   doesn't require scrolling to the bottom action row. */
+   doesn't require scrolling to the bottom action row. Same squared-off
+   radius, surface/border fill and sizing as the rest of the icon buttons
+   (#cal-prev, #btn-sync-settings, etc.), not a circular FAB-style button. */
 .dialog-close {
   position: absolute;
   top: 10px;
@@ -832,11 +834,11 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  border-radius: 50%;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--muted);
-  font-size: 1.3rem;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.2rem;
   line-height: 1;
   padding: 0;
   display: flex;
