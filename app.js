@@ -945,15 +945,20 @@
       navigator.serviceWorker.register('sw.js').catch(() => {});
     });
 
-    // When a newer service worker takes over (a fresh deploy), reload once
-    // so an already-open tab/installed window shows it instead of stale assets.
-    let reloadedForUpdate = false;
+    // controllerchange also fires on a brand-new visit's very first
+    // activation (there's nothing to "update" from there) — only treat it
+    // as a real update if a service worker was already controlling this
+    // page beforehand, i.e. a fresh deploy took over an existing session.
+    const hadControllerAlready = !!navigator.serviceWorker.controller;
+    let shownUpdate = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloadedForUpdate) return;
-      reloadedForUpdate = true;
-      window.location.reload();
+      if (shownUpdate || !hadControllerAlready) return;
+      shownUpdate = true;
+      document.getElementById('btn-update').hidden = false;
     });
   }
+
+  document.getElementById('btn-update').addEventListener('click', () => window.location.reload());
 
   /* ---------- init ---------- */
 

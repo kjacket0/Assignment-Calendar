@@ -86,6 +86,21 @@
 
 * { box-sizing: border-box; }
 
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 8px;
+  border: 2px solid var(--bg);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -198,6 +213,7 @@ body {
   background: var(--swatch);
   padding: 0;
   cursor: pointer;
+  transition: transform 0.1s ease;
 }
 
 .theme-swatch[aria-pressed="true"] {
@@ -256,6 +272,7 @@ body {
   font-weight: 600;
   color: var(--muted);
   cursor: pointer;
+  transition: transform 0.1s ease;
 }
 
 .tab[aria-selected="true"] {
@@ -347,6 +364,15 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   font: inherit;
   cursor: pointer;
   padding: 0;
+  border-radius: 6px;
+  transition: background-color 0.1s ease;
+}
+
+/* A full-width row scales badly (reads as a layout glitch, not a tap) —
+   a background tint is the native-feeling press feedback for a list row.
+   Standalone buttons below get a scale effect instead. */
+.item-body:active {
+  background: var(--bg);
 }
 
 .item-title {
@@ -380,12 +406,50 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+/* Standalone tappable controls compress slightly on press, like a native
+   button. Not applied to full-width rows (.item-body above) — scaling
+   those reads as a glitch, not a tap. */
+.btn:active,
+.fab:active,
+.tab:active,
+.theme-swatch:active,
+.cal-day:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body {
+    transition: none;
+  }
 }
 
 .btn.primary { background: var(--accent); color: var(--accent-contrast); }
 .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn.danger { background: none; color: var(--danger); border: 1px solid var(--danger); }
 .btn.icon-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; font-size: 1.1rem; }
+
+/* Shown only when a new deploy has taken over in the background — reload
+   is the user's call, not something sprung on them mid-edit. */
+.update-pill {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  animation: update-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes update-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(127, 127, 127, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(127, 127, 127, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .update-pill { animation: none; }
+}
 
 .fab {
   position: fixed;
@@ -401,6 +465,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   z-index: 10;
+  transition: transform 0.1s ease;
 }
 
 /* Calendar */
@@ -439,6 +504,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   cursor: pointer;
   font-size: 0.82rem;
   color: var(--text);
+  transition: transform 0.1s ease;
 }
 
 .cal-day.empty { visibility: hidden; cursor: default; }
