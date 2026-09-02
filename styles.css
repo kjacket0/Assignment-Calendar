@@ -86,6 +86,14 @@
 
 * { box-sizing: border-box; }
 
+/* A `display`-setting rule on any element that also uses the `hidden`
+   attribute (e.g. .btn's display:flex, added for touch-target centering)
+   otherwise beats the browser's built-in [hidden]{display:none} — both
+   are equal specificity, and an author stylesheet rule always wins that
+   tie over the user-agent default. This keeps `hidden` authoritative
+   everywhere, regardless of what any other rule sets display to. */
+[hidden] { display: none !important; }
+
 *::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -206,8 +214,8 @@ body {
 }
 
 .theme-swatch {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: var(--swatch);
@@ -273,6 +281,10 @@ body {
   color: var(--muted);
   cursor: pointer;
   transition: transform 0.1s ease;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tab[aria-selected="true"] {
@@ -297,6 +309,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   align-items: center;
   gap: 6px;
   font-size: 0.9rem;
+  min-height: 44px;
 }
 
 .field-inline select {
@@ -305,9 +318,10 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+  min-height: 44px;
 }
 
-.checkbox-inline input { width: 18px; height: 18px; }
+.checkbox-inline input { width: 20px; height: 20px; flex: none; }
 
 .subject-group {
   margin-bottom: 20px;
@@ -348,8 +362,8 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 }
 
 .item input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   margin-top: 2px;
   flex: none;
 }
@@ -407,6 +421,16 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.1s ease;
+  /* 44px is Apple's/Material's baseline comfortable tap target. A mouse
+     doesn't need it, but it doesn't hurt a mouse either — so this applies
+     everywhere rather than only under some touch-detection heuristic,
+     which would be unreliable anyway (plenty of laptops and desktops
+     have touchscreens too). display:flex centers label text once
+     min-height adds slack the font's own line-height doesn't fill. */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Standalone tappable controls compress slightly on press, like a native
@@ -429,7 +453,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 .btn.primary { background: var(--accent); color: var(--accent-contrast); }
 .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn.danger { background: none; color: var(--danger); border: 1px solid var(--danger); }
-.btn.icon-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; font-size: 1.1rem; }
+.btn.icon-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; font-size: 1.1rem; min-width: 44px; }
 
 /* Shown only when a new deploy has taken over in the background — reload
    is the user's call, not something sprung on them mid-edit. */
@@ -546,7 +570,18 @@ input, textarea {
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  box-sizing: border-box;
 }
+
+/* Text-like fields get a taller tap/click target; checkboxes and radios
+   keep their natural small size — min-height would otherwise stretch
+   them into tall rectangles instead of squares (the surrounding label
+   is what gives those a comfortable tap area, not the control itself). */
+input:not([type="checkbox"]):not([type="radio"]), textarea {
+  min-height: 44px;
+}
+
+textarea { min-height: 72px; }
 
 .dialog-actions {
   display: flex;
