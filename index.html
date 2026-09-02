@@ -182,6 +182,21 @@
   </div>
 </dialog>
 
+<dialog id="prompt-dialog">
+  <form id="prompt-form" method="dialog">
+    <h2 id="prompt-title">FELDKAMP</h2>
+    <p id="prompt-message"></p>
+    <label class="field" id="prompt-field">
+      <input type="text" id="prompt-input" autocomplete="off" />
+    </label>
+    <div class="dialog-actions">
+      <span class="spacer"></span>
+      <button type="button" id="prompt-cancel" class="btn secondary">Cancel</button>
+      <button type="submit" id="prompt-ok" class="btn primary">OK</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="app.js"></script>
 </body>
 </html>

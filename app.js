@@ -112,6 +112,61 @@
     }[c]));
   }
 
+  /* ---------- app-styled prompt/confirm/alert ----------
+   * Browsers stamp native prompt()/confirm()/alert() dialogs with "<origin>
+   * says" and there's no way to remove or relabel that — it's a deliberate
+   * anti-spoofing feature, not an oversight. These are drop-in async
+   * replacements using the app's own <dialog> styling instead, so nothing
+   * ever shows a raw github.io URL to the user.
+   */
+  const promptDialog = document.getElementById('prompt-dialog');
+  const promptForm = document.getElementById('prompt-form');
+  const promptMessageEl = document.getElementById('prompt-message');
+  const promptField = document.getElementById('prompt-field');
+  const promptInput = document.getElementById('prompt-input');
+  const promptCancelBtn = document.getElementById('prompt-cancel');
+
+  function appDialog({ message, defaultValue = '', showInput, showCancel }) {
+    return new Promise((resolve) => {
+      promptMessageEl.textContent = message;
+      promptField.hidden = !showInput;
+      promptCancelBtn.hidden = !showCancel;
+      if (showInput) promptInput.value = defaultValue;
+
+      function cleanup() {
+        promptForm.removeEventListener('submit', onSubmit);
+        promptCancelBtn.removeEventListener('click', onCancel);
+        promptDialog.removeEventListener('cancel', onCancel);
+      }
+      function onSubmit(e) {
+        e.preventDefault();
+        cleanup();
+        promptDialog.close();
+        resolve(showInput ? promptInput.value.trim() : true);
+      }
+      function onCancel() {
+        cleanup();
+        promptDialog.close();
+        resolve(showInput ? null : false);
+      }
+      promptForm.addEventListener('submit', onSubmit);
+      promptCancelBtn.addEventListener('click', onCancel);
+      promptDialog.addEventListener('cancel', onCancel);
+      promptDialog.showModal();
+      (showInput ? promptInput : document.getElementById('prompt-ok')).focus();
+    });
+  }
+
+  function appPrompt(message, defaultValue) {
+    return appDialog({ message, defaultValue: defaultValue || '', showInput: true, showCancel: true });
+  }
+  function appConfirm(message) {
+    return appDialog({ message, showInput: false, showCancel: true });
+  }
+  function appAlert(message) {
+    return appDialog({ message, showInput: false, showCancel: false });
+  }
+
   function renderChecklist() {
     refreshSubjectOptions();
     const subjectFilter = filterSubject.value;
@@ -362,9 +417,9 @@
     scheduleSync();
   });
 
-  btnDelete.addEventListener('click', () => {
+  btnDelete.addEventListener('click', async () => {
     if (!fId.value) return;
-    if (!confirm('Delete this assignment?')) return;
+    if (!(await appConfirm('Delete this assignment?'))) return;
     // Soft delete: keep a tombstone so the deletion propagates on sync
     // instead of the item reappearing from another device's copy.
     const a = assignments.find((x) => x.id === fId.value);
@@ -442,10 +497,10 @@
     return lines.join('\r\n');
   }
 
-  document.getElementById('btn-export-ics').addEventListener('click', () => {
+  document.getElementById('btn-export-ics').addEventListener('click', async () => {
     const visible = visibleAssignments();
     if (!visible.length) {
-      alert('No assignments to export yet.');
+      await appAlert('No assignments to export yet.');
       return;
     }
     const ics = buildIcs(visible);
@@ -761,7 +816,7 @@
   }
 
   async function createNewList() {
-    const name = (prompt('Name this list (e.g. "Fall Semester"):') || '').trim();
+    const name = ((await appPrompt('Name this list (e.g. "Fall Semester"):')) || '').trim();
     if (!name) return;
     const code = genCode();
     const lists = getLists();
@@ -770,12 +825,12 @@
     await switchActiveCode(code);
   }
 
-  function renameActiveList() {
+  async function renameActiveList() {
     const code = getActiveCode();
     if (!code) return;
     const lists = getLists();
     const current = lists.find((l) => l.code === code);
-    const name = (prompt('Rename this list:', current ? current.name : '') || '').trim();
+    const name = ((await appPrompt('Rename this list:', current ? current.name : '')) || '').trim();
     if (!name || (current && name === current.name)) return;
     if (current) current.name = name;
     else lists.push({ code, name });
@@ -784,14 +839,14 @@
     scheduleSync();
   }
 
-  function forgetActiveList() {
+  async function forgetActiveList() {
     const code = getActiveCode();
     const lists = getLists();
     if (lists.length <= 1) {
-      alert('This is the only list on this device — create another list first if you want to remove this one.');
+      await appAlert('This is the only list on this device — create another list first if you want to remove this one.');
       return;
     }
-    if (!confirm("Remove this list from this device? It stays intact in the cloud — this device just stops tracking it. You can relink it later by entering its code again.")) return;
+    if (!(await appConfirm("Remove this list from this device? It stays intact in the cloud — this device just stops tracking it. You can relink it later by entering its code again."))) return;
     const remaining = lists.filter((l) => l.code !== code);
     saveLists(remaining);
     switchActiveCode(remaining[0].code);
@@ -908,7 +963,7 @@
       btn.textContent = 'Copied!';
       setTimeout(() => { btn.textContent = original; }, 1500);
     } catch {
-      alert('Could not copy automatically — select and copy the code manually.');
+      await appAlert('Could not copy automatically — select and copy the code manually.');
     }
   });
 
@@ -921,8 +976,8 @@
     if (e.key === 'Enter') { e.preventDefault(); joinCode(); }
   });
 
-  document.getElementById('btn-sync-disconnect').addEventListener('click', () => {
-    if (!confirm("Turn off sync on this device? Your assignments stay saved locally — the cloud copy is untouched.")) return;
+  document.getElementById('btn-sync-disconnect').addEventListener('click', async () => {
+    if (!(await appConfirm("Turn off sync on this device? Your assignments stay saved locally — the cloud copy is untouched."))) return;
     localStorage.removeItem(SYNC_ENABLED_KEY);
     lastSyncError = null;
     renderSyncSections();
