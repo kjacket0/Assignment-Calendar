@@ -498,16 +498,15 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 /* The checklist's subject headers are collapse toggles, not static
    headings — a filled bar (var(--border), the app's one token that's
    reliably distinct from both --bg and --surface in every theme/mode)
-   plus a color-coded left edge makes each one read as a discrete,
-   pressable control rather than plain text with a stray icon off to the
-   side. Press feedback lightens to --surface (a scale transform reads as
-   a layout glitch on something this wide, per .item-body below). */
+   makes each one read as a discrete, pressable control rather than plain
+   text with a stray icon off to the side. Press feedback lightens to
+   --surface (a scale transform reads as a layout glitch on something
+   this wide, per .item-body below). */
 .subject-group-header {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--border);
   background: var(--border);
   color: var(--text);
   font-family: inherit;

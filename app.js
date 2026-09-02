@@ -292,10 +292,10 @@
       const collapsed = isSubjectCollapsed(subject, items.length > 0);
       const bodyId = `subject-body-${idx}`;
       group.innerHTML = `
-        <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}" style="border-left-color:${color}">
-          <span class="subject-chevron" aria-hidden="true">▾</span>
+        <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}">
           <span class="subject-dot" style="background:${color}"></span>
           <span class="subject-name">${escapeHtml(subject)}</span>
+          <span class="subject-chevron" aria-hidden="true">▾</span>
           ${countHtml}
         </button>
         <ul class="item-list" id="${bodyId}"${collapsed ? ' hidden' : ''}></ul>
