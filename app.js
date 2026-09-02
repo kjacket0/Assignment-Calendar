@@ -264,8 +264,14 @@
   const calDays = document.getElementById('cal-days');
   const calDayDetail = document.getElementById('cal-day-detail');
 
+  // Date to restore keyboard focus to right after the next render — set by
+  // both clicks and arrow-key navigation so focus never gets silently
+  // dropped to <body> when the grid's DOM is rebuilt from scratch.
+  let pendingFocusDate = null;
+
   const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  calWeekdays.innerHTML = WEEKDAY_NAMES.map((d) => `<div>${d}</div>`).join('');
+  calWeekdays.setAttribute('role', 'row');
+  calWeekdays.innerHTML = WEEKDAY_NAMES.map((d) => `<div role="columnheader">${d}</div>`).join('');
 
   document.getElementById('cal-prev').addEventListener('click', () => {
     calMonth--;
@@ -277,9 +283,51 @@
     if (calMonth > 11) { calMonth = 0; calYear++; }
     renderCalendar();
   });
+  document.getElementById('cal-today').addEventListener('click', () => {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    pendingFocusDate = todayStr();
+    renderCalendar();
+  });
 
   function dateKey(y, m, d) {
     return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  function shiftDateKey(key, deltaDays) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + deltaDays);
+    return dateKey(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  }
+
+  function isInMonth(dateStr, year, month) {
+    return !!dateStr && dateStr.slice(0, 7) === `${year}-${String(month + 1).padStart(2, '0')}`;
+  }
+
+  // Arrow keys move focus by day/week, Home/End jump to the start/end of
+  // the row — the standard ARIA grid keyboard pattern. Moving past the
+  // edge of the visible month navigates into the next/previous one, same
+  // as a native date picker, rather than stopping dead at the 1st/last.
+  function handleCalDayKeydown(e, key) {
+    let targetKey;
+    if (e.key === 'ArrowLeft') targetKey = shiftDateKey(key, -1);
+    else if (e.key === 'ArrowRight') targetKey = shiftDateKey(key, 1);
+    else if (e.key === 'ArrowUp') targetKey = shiftDateKey(key, -7);
+    else if (e.key === 'ArrowDown') targetKey = shiftDateKey(key, 7);
+    else if (e.key === 'Home' || e.key === 'End') {
+      const [y, m, d] = key.split('-').map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      targetKey = shiftDateKey(key, e.key === 'Home' ? -dow : 6 - dow);
+    } else {
+      return;
+    }
+    e.preventDefault();
+    const [ty, tm] = targetKey.split('-').map(Number);
+    calYear = ty;
+    calMonth = tm - 1;
+    pendingFocusDate = targetKey;
+    renderCalendar();
   }
 
   function renderCalendar() {
@@ -297,41 +345,84 @@
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const today = todayStr();
 
+    // Exactly one cell is a keyboard tab stop (roving tabindex); the rest
+    // are reached by arrow keys, not Tab. Prefer the selected day if it's
+    // in view, else today if it's in view, else just the 1st of the month.
+    const rovingDate = isInMonth(selectedDate, calYear, calMonth) ? selectedDate
+      : isInMonth(today, calYear, calMonth) ? today
+      : dateKey(calYear, calMonth, 1);
+
     calDays.innerHTML = '';
-    for (let i = 0; i < firstDow; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cal-day empty';
-      calDays.appendChild(cell);
+    calDays.setAttribute('role', 'grid');
+    calDays.setAttribute('aria-label', calMonthLabel.textContent);
+
+    let weekRow = null;
+    let dayIndexInWeek = 0;
+    function startWeekRow() {
+      weekRow = document.createElement('div');
+      weekRow.className = 'cal-week-row';
+      weekRow.setAttribute('role', 'row');
+      calDays.appendChild(weekRow);
+    }
+    function addFiller() {
+      const filler = document.createElement('div');
+      filler.className = 'cal-day empty';
+      filler.setAttribute('aria-hidden', 'true');
+      weekRow.appendChild(filler);
+      dayIndexInWeek++;
     }
 
+    startWeekRow();
+    for (let i = 0; i < firstDow; i++) addFiller();
+
     for (let d = 1; d <= daysInMonth; d++) {
+      if (dayIndexInWeek === 7) { startWeekRow(); dayIndexInWeek = 0; }
       const key = dateKey(calYear, calMonth, d);
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'cal-day';
-      if (key === today) cell.classList.add('today');
+      cell.setAttribute('role', 'gridcell');
+      cell.dataset.date = key;
+      cell.tabIndex = key === rovingDate ? 0 : -1;
+      if (key === today) {
+        cell.classList.add('today');
+        cell.setAttribute('aria-current', 'date');
+      }
       if (key === selectedDate) cell.classList.add('selected');
 
       const dayItems = byDate.get(key) || [];
       let dotsHtml = '';
       if (dayItems.length) {
-        const colors = [...new Set(dayItems.map((a) => subjectColor(a.subject)))].slice(0, 4);
-        dotsHtml = `<div class="cal-dots">${colors.map((c) => `<span class="cal-dot" style="background:${c}"></span>`).join('')}</div>`;
+        const allColors = [...new Set(dayItems.map((a) => subjectColor(a.subject)))];
+        const shown = allColors.slice(0, 4);
+        const extra = allColors.length - shown.length;
+        dotsHtml = `<div class="cal-dots">${shown.map((c) => `<span class="cal-dot" style="background:${c}"></span>`).join('')}${extra > 0 ? `<span class="cal-more">+${extra}</span>` : ''}</div>`;
       }
       cell.innerHTML = `<span>${d}</span>${dotsHtml}`;
-      cell.setAttribute('aria-label', `${key}${dayItems.length ? `, ${dayItems.length} assignment(s)` : ''}`);
+      const friendlyDate = formatDate(key);
+      cell.setAttribute('aria-label', `${friendlyDate}${dayItems.length ? `, ${dayItems.length} assignment${dayItems.length === 1 ? '' : 's'}` : ''}`);
       cell.addEventListener('click', () => {
         selectedDate = key;
+        pendingFocusDate = key;
         renderCalendar();
       });
-      calDays.appendChild(cell);
+      cell.addEventListener('keydown', (e) => handleCalDayKeydown(e, key));
+      weekRow.appendChild(cell);
+      dayIndexInWeek++;
     }
+    while (dayIndexInWeek > 0 && dayIndexInWeek < 7) addFiller();
 
     renderDayDetail(byDate);
+
+    if (pendingFocusDate) {
+      const target = calDays.querySelector(`[data-date="${pendingFocusDate}"]`);
+      if (target) target.focus();
+      pendingFocusDate = null;
+    }
   }
 
   function renderDayDetail(byDate) {
-    if (!selectedDate || selectedDate.slice(0, 7) !== `${calYear}-${String(calMonth + 1).padStart(2, '0')}`) {
+    if (!isInMonth(selectedDate, calYear, calMonth)) {
       calDayDetail.innerHTML = '';
       return;
     }
@@ -376,7 +467,11 @@
       fId.value = '';
       // Adding while browsing the calendar with a day selected should
       // default to that day, not silently fall back to today.
-      fDate.value = (!viewCalendar.hidden && selectedDate) ? selectedDate : todayStr();
+      // Only trust selectedDate if it's actually visible right now — it
+      // can go stale after navigating months away from it, and using it
+      // then would silently default Add to a day nothing on screen
+      // indicates is "selected" anymore.
+      fDate.value = (!viewCalendar.hidden && isInMonth(selectedDate, calYear, calMonth)) ? selectedDate : todayStr();
       btnDelete.hidden = true;
     }
     dialog.showModal();
