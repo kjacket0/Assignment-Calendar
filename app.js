@@ -520,9 +520,65 @@
 
   function isSyncEnabled() { return localStorage.getItem(SYNC_ENABLED_KEY) === '1'; }
 
+  // Plain-English words instead of a hex blob: "tiger-plasma-orbit-glacier"
+  // reads out loud, types on a phone keyboard, and survives a typo better
+  // than a wall of hex ever would. 256 words × 4 gives 2^32 combinations —
+  // plenty against guessing, especially paired with Firestore rules that
+  // block listing the collection outright.
+  const CODE_WORDS = [
+    'anchor', 'antler', 'apple', 'arrow', 'aspen', 'atlas', 'badge', 'badger', 'banjo', 'barrel',
+    'basil', 'basket', 'beacon', 'beaver', 'birch', 'bishop', 'blanket', 'boulder', 'breeze', 'bronze',
+    'bucket', 'buckle', 'bugle', 'button', 'cactus', 'camel', 'candle', 'canoe', 'canyon', 'cargo',
+    'cedar', 'cellar', 'chalk', 'charm', 'cherry', 'chisel', 'cider', 'cinder', 'clover', 'cobra',
+    'comet', 'compass', 'condor', 'copper', 'coral', 'cotton', 'cougar', 'crane', 'crater', 'cricket',
+    'crimson', 'cyclone', 'dagger', 'daisy', 'delta', 'desert', 'dingo', 'dolphin', 'dragon', 'drift',
+    'eagle', 'ember', 'emerald', 'engine', 'falcon', 'feather', 'fennel', 'ferret', 'fiddle', 'finch',
+    'fjord', 'flame', 'flannel', 'flint', 'forest', 'fossil', 'fountain', 'fox', 'galaxy', 'garnet',
+    'gazelle', 'gecko', 'geyser', 'ginger', 'glacier', 'goblet', 'goose', 'granite', 'gravel', 'guitar',
+    'gully', 'hamlet', 'hammer', 'harbor', 'harvest', 'hazel', 'heron', 'hickory', 'hollow', 'horizon',
+    'hornet', 'hunter', 'husky', 'ibis', 'iguana', 'indigo', 'island', 'ivory', 'jacket', 'jaguar',
+    'jasper', 'jelly', 'jester', 'jungle', 'kayak', 'kernel', 'kettle', 'kingfisher', 'kiosk', 'koala',
+    'ladder', 'lagoon', 'lantern', 'lark', 'lava', 'lavender', 'ledge', 'lemur', 'lentil', 'lichen',
+    'lilac', 'lizard', 'llama', 'lobster', 'locket', 'lotus', 'lynx', 'magnet', 'mallet', 'mammoth',
+    'mango', 'mantis', 'maple', 'marble', 'marlin', 'marsh', 'meadow', 'melon', 'mesa', 'meteor',
+    'mineral', 'minnow', 'mirror', 'moccasin', 'monsoon', 'moose', 'moraine', 'moss', 'mustang', 'napkin',
+    'nautical', 'nebula', 'needle', 'nettle', 'nickel', 'nimbus', 'noodle', 'nutmeg', 'oasis', 'ocelot',
+    'onyx', 'opal', 'orbit', 'orchard', 'orchid', 'osprey', 'otter', 'outpost', 'owl', 'oyster',
+    'paddle', 'panda', 'pantry', 'panther', 'papaya', 'parcel', 'parrot', 'pebble', 'pelican', 'penny',
+    'pepper', 'petal', 'pheasant', 'pickle', 'pigeon', 'pillow', 'pine', 'pioneer', 'piston', 'plasma',
+    'plateau', 'plum', 'pocket', 'poplar', 'poppy', 'possum', 'prairie', 'prism', 'puddle', 'pumpkin',
+    'quail', 'quartz', 'quilt', 'rabbit', 'raccoon', 'radish', 'raven', 'reef', 'ribbon', 'ridge',
+    'river', 'rocket', 'rooster', 'ruby', 'saddle', 'saffron', 'sage', 'salmon', 'satchel', 'sapphire',
+    'savanna', 'scarlet', 'scout', 'sequoia', 'shadow', 'shovel', 'shrimp', 'sierra', 'silo', 'skiff',
+    'sloth', 'sparrow', 'spatula', 'sphinx', 'spiral', 'spring', 'spruce', 'squid', 'stable', 'stallion',
+    'starling', 'summit', 'sunset', 'swallow', 'swan', 'tanager', 'tangerine', 'tapestry', 'thimble', 'thistle',
+    'thunder', 'thyme', 'tide', 'tiger', 'timber', 'toast', 'toucan', 'trellis', 'trout', 'tulip',
+    'tundra', 'tunnel', 'turtle', 'tusk', 'twilight', 'umber', 'valley', 'velvet', 'vessel', 'violet',
+    'vulture', 'wagon', 'walnut', 'walrus', 'warbler', 'weasel', 'whale', 'wheat', 'whistle', 'wicker',
+    'willow', 'wolf', 'wombat', 'zebra', 'zephyr', 'zinnia',
+  ];
+
+  function randomInt(max) {
+    if (window.crypto && crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      return arr[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  }
+
   function genCode() {
-    const raw = window.crypto && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}-${Math.random()}`;
-    return raw.replace(/-/g, '');
+    const words = [];
+    for (let i = 0; i < 4; i++) words.push(CODE_WORDS[randomInt(CODE_WORDS.length)]);
+    return words.join('-');
+  }
+
+  function normalizeCode(raw) {
+    return raw
+      .trim()
+      .toLowerCase()
+      .replace(/\s*-\s*/g, '-') // collapse "word - word" (typed hyphen plus stray spaces) to "word-word"
+      .replace(/\s+/g, '-');    // any remaining run of spaces (hyphen dropped entirely) becomes one
   }
 
   function getLists() {
@@ -742,7 +798,7 @@
 
   async function joinCode() {
     const input = document.getElementById('f-join-code');
-    const code = input.value.trim();
+    const code = normalizeCode(input.value);
     if (!code) return;
     const lists = getLists();
     if (lists.some((l) => l.code === code)) {

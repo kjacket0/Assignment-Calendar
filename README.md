@@ -82,10 +82,12 @@ app owner — end users never sign up for anything.
    }
    ```
 
-   This lets anyone holding a specific (long, random) code read or write
-   *only* that one document — no listing or deleting, no guessing your way
-   in from a short code. The code itself, generated client-side with
-   `crypto.randomUUID()`, is what stands in for authentication.
+   This lets anyone holding a specific code read or write *only* that one
+   document — no listing or deleting, no brute-forcing your way in. The
+   code itself (four random dictionary words, e.g. `tiger-plasma-orbit-
+   glacier` — see `CODE_WORDS` in `app.js`) is what stands in for
+   authentication; the length check is just a floor against hand-typed
+   junk.
 4. Publish the rules, then go to **Project settings** (gear icon) → scroll to
    **Your apps** → click the web icon (`</>`) → register an app (nickname
    only, skip Hosting) → copy the `firebaseConfig` values.
@@ -98,8 +100,9 @@ ship client-side — the security boundary is the rules above, not the key.
 ## How sync works
 
 - Turning on sync (tap **Sync**, or **Turn on sync** in Settings) mints a
-  random ~32-character code for the current list and starts syncing it to
-  Firestore.
+  four-word code (e.g. `tiger-plasma-orbit-glacier`) for the current list
+  and starts syncing it to Firestore — easy to read aloud, type, or text
+  to someone.
 - **Copy** that code from Settings and paste it into another device's
   **Link a device with a code** field to join the same list there.
 - **+ New list** creates another independent list with its own code —
