@@ -504,6 +504,10 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   margin: 0 0 8px;
 }
 
+.upcoming-overdue h2 {
+  color: var(--overdue);
+}
+
 .subject-count {
   margin-left: auto;
   font-size: 0.72rem;

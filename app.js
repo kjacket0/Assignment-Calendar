@@ -145,22 +145,25 @@
 
   /* ---------- tabs ---------- */
 
-  const tabChecklist = document.getElementById('tab-checklist');
-  const tabCalendar = document.getElementById('tab-calendar');
-  const viewChecklist = document.getElementById('view-checklist');
-  const viewCalendar = document.getElementById('view-calendar');
+  const TABS = {
+    checklist: { btn: document.getElementById('tab-checklist'), view: document.getElementById('view-checklist') },
+    upcoming: { btn: document.getElementById('tab-upcoming'), view: document.getElementById('view-upcoming') },
+    calendar: { btn: document.getElementById('tab-calendar'), view: document.getElementById('view-calendar') },
+  };
 
   function showTab(name) {
-    const isChecklist = name === 'checklist';
-    tabChecklist.setAttribute('aria-selected', String(isChecklist));
-    tabCalendar.setAttribute('aria-selected', String(!isChecklist));
-    viewChecklist.hidden = !isChecklist;
-    viewCalendar.hidden = isChecklist;
-    if (!isChecklist) renderCalendar();
+    for (const key of Object.keys(TABS)) {
+      const active = key === name;
+      TABS[key].btn.setAttribute('aria-selected', String(active));
+      TABS[key].view.hidden = !active;
+    }
+    if (name === 'calendar') renderCalendar();
+    else if (name === 'upcoming') renderUpcoming();
   }
 
-  tabChecklist.addEventListener('click', () => showTab('checklist'));
-  tabCalendar.addEventListener('click', () => showTab('calendar'));
+  for (const key of Object.keys(TABS)) {
+    TABS[key].btn.addEventListener('click', () => showTab(key));
+  }
 
   /* ---------- checklist view ---------- */
 
@@ -313,6 +316,7 @@
       a.updatedAt = Date.now();
       saveAssignments(assignments);
       renderChecklist();
+      renderUpcoming();
       scheduleSync();
     });
 
@@ -350,6 +354,61 @@
     hideCompleted.checked = false;
     renderChecklist();
   });
+
+  /* ---------- upcoming view ----------
+   * A second, time-ordered cut of the same data the checklist groups by
+   * subject — inspired by Brightspace Pulse's schedule view: what's due
+   * today, this week, and later, across every subject at a glance. Done
+   * items just drop out entirely rather than showing crossed-out, since
+   * "due" stops meaning anything once it's done.
+   */
+
+  const upcomingGroups = document.getElementById('upcoming-groups');
+  const upcomingEmpty = document.getElementById('upcoming-empty');
+
+  function renderUpcoming() {
+    const today = todayStr();
+    const weekEnd = shiftDateKey(today, 6 - new Date().getDay());
+
+    const buckets = { overdue: [], today: [], week: [], later: [] };
+    for (const a of visibleAssignments()) {
+      if (a.done) continue;
+      if (a.date < today) buckets.overdue.push(a);
+      else if (a.date === today) buckets.today.push(a);
+      else if (a.date <= weekEnd) buckets.week.push(a);
+      else buckets.later.push(a);
+    }
+
+    const sections = [
+      { key: 'overdue', label: 'Overdue', overdue: true },
+      { key: 'today', label: 'Today' },
+      { key: 'week', label: 'This Week' },
+      { key: 'later', label: 'Later' },
+    ];
+
+    upcomingGroups.innerHTML = '';
+    let renderedAny = false;
+    for (const { key, label, overdue } of sections) {
+      const items = buckets[key];
+      if (!items.length) continue;
+      renderedAny = true;
+      items.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+
+      const group = document.createElement('div');
+      group.className = 'subject-group' + (overdue ? ' upcoming-overdue' : '');
+      group.innerHTML = `
+        <h2>
+          <span>${label}</span>
+          <span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>
+        </h2>
+        <ul class="item-list"></ul>
+      `;
+      const ul = group.querySelector('ul');
+      for (const a of items) ul.appendChild(renderItem(a, { showSubject: true }));
+      upcomingGroups.appendChild(group);
+    }
+    upcomingEmpty.hidden = renderedAny;
+  }
 
   /* ---------- calendar view ---------- */
 
@@ -587,7 +646,7 @@
       // can go stale after navigating months away from it, and using it
       // then would silently default Add to a day nothing on screen
       // indicates is "selected" anymore.
-      fDate.value = (!viewCalendar.hidden && isInMonth(selectedDate, calYear, calMonth)) ? selectedDate : todayStr();
+      fDate.value = (!TABS.calendar.view.hidden && isInMonth(selectedDate, calYear, calMonth)) ? selectedDate : todayStr();
       btnDelete.hidden = true;
     }
     dialog.showModal();
@@ -627,6 +686,7 @@
     saveAssignments(assignments);
     dialog.close();
     renderChecklist();
+    renderUpcoming();
     renderCalendar();
     renderSubjectManageList();
     scheduleSync();
@@ -645,6 +705,7 @@
     saveAssignments(assignments);
     dialog.close();
     renderChecklist();
+    renderUpcoming();
     renderCalendar();
     scheduleSync();
   });
@@ -731,6 +792,7 @@
     s.updatedAt = Date.now();
     saveSubjects(subjects);
     renderChecklist();
+    renderUpcoming();
     renderCalendar();
     renderSubjectManageList();
     scheduleSync();
@@ -773,6 +835,7 @@
     saveSubjects(subjects);
     subjectDialog.close();
     renderChecklist();
+    renderUpcoming();
     renderCalendar();
     renderSubjectManageList();
     scheduleSync();
@@ -1173,6 +1236,7 @@
       }
       if (changed) {
         renderChecklist();
+        renderUpcoming();
         renderCalendar();
         renderSubjectManageList();
       }
@@ -1232,6 +1296,7 @@
       setActiveCode(newCode);
       localStorage.setItem(LAST_SYNCED_KEY, String(Date.now()));
       renderChecklist();
+      renderUpcoming();
       renderCalendar();
       renderSubjectManageList();
     } catch (err) {

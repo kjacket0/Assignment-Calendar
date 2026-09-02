@@ -48,6 +48,7 @@
   </div>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button id="tab-checklist" class="tab" role="tab" aria-selected="true" aria-controls="view-checklist">Checklist</button>
+    <button id="tab-upcoming" class="tab" role="tab" aria-selected="false" aria-controls="view-upcoming">Upcoming</button>
     <button id="tab-calendar" class="tab" role="tab" aria-selected="false" aria-controls="view-calendar">Calendar</button>
   </nav>
 </header>
@@ -70,6 +71,11 @@
     </div>
     <div id="checklist-groups"></div>
     <p id="checklist-empty" class="empty-state" hidden>No assignments yet. Tap "+ Add" to get started.</p>
+  </section>
+
+  <section id="view-upcoming" class="view" role="tabpanel" aria-labelledby="tab-upcoming" hidden>
+    <div id="upcoming-groups"></div>
+    <p id="upcoming-empty" class="empty-state" hidden>You're all caught up — nothing due.</p>
   </section>
 
   <section id="view-calendar" class="view" role="tabpanel" aria-labelledby="tab-calendar" hidden>
