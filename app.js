@@ -374,7 +374,9 @@
     } else {
       dialogTitle.textContent = 'Add assignment';
       fId.value = '';
-      fDate.value = todayStr();
+      // Adding while browsing the calendar with a day selected should
+      // default to that day, not silently fall back to today.
+      fDate.value = (!viewCalendar.hidden && selectedDate) ? selectedDate : todayStr();
       btnDelete.hidden = true;
     }
     dialog.showModal();
