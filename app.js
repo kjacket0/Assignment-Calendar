@@ -509,8 +509,8 @@
   // which restrict every document to exact-path get/create/update only
   // (no listing, no deleting) — so a sync code functions like an
   // unguessable capability key rather than a password.
-  const FIREBASE_PROJECT_ID = 'REPLACE_WITH_FIREBASE_PROJECT_ID';
-  const FIREBASE_API_KEY = 'REPLACE_WITH_FIREBASE_API_KEY';
+  const FIREBASE_PROJECT_ID = 'feldkamp-pwa';
+  const FIREBASE_API_KEY = 'AIzaSyAUdoVZbcsA7cosnvPHAyls33fQrkRqKKk';
   const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
   const SYNC_ENABLED_KEY = 'feldkamp-sync-enabled';
