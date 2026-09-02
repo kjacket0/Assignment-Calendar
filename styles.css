@@ -458,6 +458,16 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   margin-bottom: 16px;
 }
 
+/* Keeps the Subject filter and its + Subject button tight against each
+   other as one cluster, even when the wider .toolbar rule below spreads
+   its direct children apart with justify-content: space-between. */
+.subject-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .field-inline, .checkbox-inline {
   display: flex;
   align-items: center;
