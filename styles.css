@@ -677,12 +677,13 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 .tab:active,
 .theme-swatch:active,
 .cal-day:active,
-.theme-toggle:active {
+.theme-toggle:active,
+.dialog-close:active {
   transform: scale(0.96);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body, .theme-toggle, .theme-toggle-knob {
+  .btn, .fab, .tab, .theme-swatch, .cal-day, .item-body, .theme-toggle, .theme-toggle-knob, .dialog-close {
     transition: none;
   }
 }
@@ -810,6 +811,7 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 /* Dialog */
 dialog {
+  position: relative;
   border: none;
   border-radius: var(--radius);
   padding: 20px;
@@ -819,6 +821,30 @@ dialog {
 }
 
 dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+
+/* Floating close button for dialogs long enough to need an exit that
+   doesn't require scrolling to the bottom action row. */
+.dialog-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
 
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 0.9rem; }
 .field-row { display: flex; gap: 10px; }

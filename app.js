@@ -1369,6 +1369,7 @@
   });
   document.getElementById('btn-sync-settings').addEventListener('click', openSyncDialog);
   document.getElementById('btn-sync-cancel').addEventListener('click', () => syncDialog.close());
+  document.getElementById('btn-sync-close').addEventListener('click', () => syncDialog.close());
   syncDialog.addEventListener('cancel', () => syncDialog.close());
 
   document.getElementById('btn-sync-enable').addEventListener('click', async () => {
