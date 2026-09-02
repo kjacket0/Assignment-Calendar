@@ -300,7 +300,7 @@
     }
   }
 
-  function renderItem(a) {
+  function renderItem(a, opts = {}) {
     const li = document.createElement('li');
     li.className = 'item' + (a.done ? ' done' : '');
 
@@ -321,9 +321,20 @@
     body.className = 'item-body';
     const overdue = isOverdue(a);
     const dateLabel = formatDate(a.date) + (a.time ? ` · ${formatTime(a.time)}` : '');
+    // Subject + notes only make sense outside the checklist, where items
+    // are already grouped under a subject heading and opening the edit
+    // dialog is one tap away — the calendar's day view has neither.
+    const subjectHtml = opts.showSubject
+      ? `<div class="item-subject"><span class="subject-dot" style="background:${subjectColor(a.subject)}"></span>${escapeHtml(a.subject)}</div>`
+      : '';
+    const notesHtml = opts.showNotes && a.notes
+      ? `<div class="item-notes">${escapeHtml(a.notes)}</div>`
+      : '';
     body.innerHTML = `
+      ${subjectHtml}
       <div class="item-title">${escapeHtml(a.title)}</div>
       <div class="item-meta${overdue ? ' overdue' : ''}">${overdue ? 'Overdue · ' : ''}${dateLabel}</div>
+      ${notesHtml}
     `;
     body.addEventListener('click', () => openDialog(a));
 
@@ -498,6 +509,11 @@
         selectedDate = key;
         pendingFocusDate = key;
         renderCalendar();
+        // The day view lives below the grid, easy to tap a day and never
+        // notice it updated — bring it into view so the tap visibly does
+        // something instead of looking like a dead button.
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        calDayDetail.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
       });
       cell.addEventListener('keydown', (e) => handleCalDayKeydown(e, key));
       weekRow.appendChild(cell);
@@ -533,7 +549,7 @@
     }
     const ul = document.createElement('ul');
     ul.className = 'item-list';
-    for (const a of items) ul.appendChild(renderItem(a));
+    for (const a of items) ul.appendChild(renderItem(a, { showSubject: true, showNotes: true }));
     calDayDetail.innerHTML = `<h3>${formatDate(selectedDate)}</h3>`;
     calDayDetail.appendChild(ul);
   }
@@ -687,7 +703,7 @@
   function renderSubjectManageList() {
     const list = visibleSubjects().slice().sort((a, b) => a.name.localeCompare(b.name));
     if (!list.length) {
-      subjectManageList.innerHTML = '<li class="dialog-help subject-manage-empty">No subjects yet — add one from the Checklist tab, or it\'ll show up automatically the first time you assign it to something.</li>';
+      subjectManageList.innerHTML = '<li class="dialog-help subject-manage-empty">No subjects yet — add one below, or it\'ll show up automatically the first time you assign it to something.</li>';
       return;
     }
     subjectManageList.innerHTML = '';

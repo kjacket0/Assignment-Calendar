@@ -467,16 +467,6 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   margin-bottom: 16px;
 }
 
-/* Keeps the Subject filter and its + Subject button tight against each
-   other as one cluster, even when the wider .toolbar rule below spreads
-   its direct children apart with justify-content: space-between. */
-.subject-filter-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
 .field-inline, .checkbox-inline {
   display: flex;
   align-items: center;
@@ -579,6 +569,20 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   background: var(--bg);
 }
 
+.item-subject {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.item-subject .subject-dot {
+  width: 8px;
+  height: 8px;
+}
+
 .item-title {
   font-weight: 600;
   word-break: break-word;
@@ -596,6 +600,16 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 }
 
 .item-meta.overdue { color: var(--overdue); font-weight: 600; }
+
+.item-notes {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 .empty-state {
   color: var(--muted);

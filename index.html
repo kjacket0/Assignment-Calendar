@@ -55,15 +55,12 @@
 <main>
   <section id="view-checklist" class="view" role="tabpanel" aria-labelledby="tab-checklist">
     <div class="toolbar">
-      <div class="subject-filter-group">
-        <label class="field-inline">
-          <span>Subject</span>
-          <select id="filter-subject">
-            <option value="">All subjects</option>
-          </select>
-        </label>
-        <button id="btn-subject-add" class="btn secondary" type="button">+ Subject</button>
-      </div>
+      <label class="field-inline">
+        <span>Subject</span>
+        <select id="filter-subject">
+          <option value="">All subjects</option>
+        </select>
+      </label>
       <label class="checkbox-inline">
         <input type="checkbox" id="hide-completed" />
         <span>Hide completed</span>
@@ -159,6 +156,7 @@
     <section class="settings-section">
       <h3>Subjects</h3>
       <ul class="subject-manage-list" id="subject-manage-list"></ul>
+      <button type="button" id="btn-subject-add" class="btn secondary">+ Add subject</button>
     </section>
 
     <section class="settings-section">
