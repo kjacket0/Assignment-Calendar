@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'medical-assignments-v1';
+  const STORAGE_KEY = 'feldkamp-assignments-v1';
   const SUBJECT_PALETTE = [
     '#0f6266', '#a35d00', '#5b3fb6', '#b3261e',
     '#2e7d32', '#8e4585', '#00695c', '#6d4c00',
@@ -420,11 +420,11 @@
     const now = new Date();
     const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
 
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MediCal//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//FELDKAMP//Paramedic Assignments//EN', 'CALSCALE:GREGORIAN'];
 
     for (const a of list) {
       lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${a.id}@medical.local`);
+      lines.push(`UID:${a.id}@feldkamp.local`);
       lines.push(`DTSTAMP:${stamp}`);
       if (a.time) {
         lines.push(`DTSTART:${toIcsDateTime(a.date, a.time)}`);
@@ -453,7 +453,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `medical-assignments-${todayStr()}.ics`;
+    a.download = `feldkamp-assignments-${todayStr()}.ics`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -462,7 +462,7 @@
 
   /* ---------- theming ---------- */
 
-  const THEME_KEY = 'medical-theme';
+  const THEME_KEY = 'feldkamp-theme';
   const THEMES = [
     { id: 'plum', label: 'Plum', light: '#7c1fa0', dark: '#bb5de0' },
     { id: 'blue', label: 'Blue', light: '#1c4d9c', dark: '#5a8ee2' },
@@ -513,10 +513,10 @@
   const FIREBASE_API_KEY = 'REPLACE_WITH_FIREBASE_API_KEY';
   const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
 
-  const SYNC_ENABLED_KEY = 'medical-sync-enabled';
-  const LISTS_KEY = 'medical-lists';
-  const ACTIVE_CODE_KEY = 'medical-active-code';
-  const LAST_SYNCED_KEY = 'medical-last-synced';
+  const SYNC_ENABLED_KEY = 'feldkamp-sync-enabled';
+  const LISTS_KEY = 'feldkamp-lists';
+  const ACTIVE_CODE_KEY = 'feldkamp-active-code';
+  const LAST_SYNCED_KEY = 'feldkamp-last-synced';
 
   function isSyncEnabled() { return localStorage.getItem(SYNC_ENABLED_KEY) === '1'; }
 

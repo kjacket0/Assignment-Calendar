@@ -1,6 +1,8 @@
-# MediCal
+# FELDKAMP
 
-A small, fast, offline-friendly PWA for tracking paramedic program assignments.
+**F**ield, **E**MS, **L**ab & **D**idactic **K**nowledge **A**ssignment
+**M**anagement **P**latform — a small, fast, offline-friendly PWA for
+tracking paramedic program assignments.
 
 No build step, no frameworks — just static HTML/CSS/JS backed by a small
 Firestore database for optional sync. All data lives in `localStorage` on
@@ -51,7 +53,7 @@ node scripts/gen-icons.js
 
 ## Data
 
-Assignments are stored under the `medical-assignments-v1` key in
+Assignments are stored under the `feldkamp-assignments-v1` key in
 `localStorage`, scoped to whichever origin serves the app. Clearing your
 browser's site data for that origin will remove them.
 

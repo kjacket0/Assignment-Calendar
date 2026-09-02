@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>MediCal — Paramedic Assignments</title>
-<meta name="description" content="Offline-friendly assignment tracker for paramedic program coursework." />
+<title>FELDKAMP — Paramedic Assignments</title>
+<meta name="description" content="Field, EMS, Lab &amp; Didactic Knowledge Assignment Management Platform — an offline-friendly assignment tracker for paramedic program coursework." />
 <meta name="theme-color" content="#7c1fa0" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#bb5de0" media="(prefers-color-scheme: dark)" />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -12,13 +12,13 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="MediCal" />
+<meta name="apple-mobile-web-app-title" content="FELDKAMP" />
 <script>
   // Applied before first paint so switching themes in settings doesn't
   // cause a flash of the default theme on the next load.
   (function () {
     try {
-      var theme = localStorage.getItem('medical-theme');
+      var theme = localStorage.getItem('feldkamp-theme');
       if (theme) document.documentElement.setAttribute('data-theme', theme);
     } catch (e) { /* ignore */ }
   })();
@@ -30,7 +30,7 @@
 
 <header class="app-header">
   <div class="header-row">
-    <h1>MediCal</h1>
+    <h1>FELDKAMP</h1>
     <div class="sync-controls">
       <button id="btn-sync" class="btn icon-btn" type="button">Sync</button>
       <button id="btn-sync-settings" class="btn icon-btn" type="button" aria-haspopup="dialog" aria-controls="sync-dialog" aria-label="Settings" title="Settings">⚙</button>

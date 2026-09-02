@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medical-v1';
+const CACHE_NAME = 'feldkamp-v1';
 const CORE_ASSETS = [
   './',
   './index.html',
