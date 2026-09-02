@@ -357,6 +357,92 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 .view[hidden] { display: none; }
 
+@media (min-width: 700px) {
+  .app-header {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .header-row {
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.8rem;
+  }
+
+  main {
+    padding: 20px 20px 28px;
+    max-width: 860px;
+  }
+
+  .toolbar {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .subject-group {
+    margin-bottom: 24px;
+  }
+}
+
+@media (min-width: 980px) {
+  .app-header {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  main {
+    max-width: 1180px;
+    padding-inline: 28px;
+  }
+
+  .app-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .toolbar {
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .field-inline,
+  .checkbox-inline {
+    min-height: 48px;
+  }
+
+  .cal-nav {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .cal-nav h2 {
+    font-size: 1.2rem;
+  }
+
+  .cal-day {
+    min-height: 96px;
+    padding: 7px 4px;
+  }
+
+  #cal-day-detail {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -371,6 +457,12 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   gap: 6px;
   font-size: 0.9rem;
   min-height: 44px;
+}
+
+.toolbar .btn {
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
 }
 
 .field-inline select {
@@ -394,6 +486,17 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   gap: 8px;
   font-size: 1rem;
   margin: 0 0 8px;
+}
+
+.subject-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  line-height: 1.2;
 }
 
 .subject-dot {
@@ -609,11 +712,28 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 
 #cal-day-detail {
   margin-top: 16px;
+  background: transparent;
+  border-radius: var(--radius);
 }
 
 #cal-day-detail h3 {
   font-size: 0.95rem;
   margin: 0 0 8px;
+}
+
+@media (max-width: 360px) {
+  .toolbar {
+    gap: 8px;
+  }
+
+  .toolbar .btn {
+    width: 100%;
+  }
+
+  .cal-day {
+    padding: 3px 1px;
+    font-size: 0.76rem;
+  }
 }
 
 /* Dialog */

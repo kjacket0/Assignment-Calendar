@@ -16,15 +16,20 @@
   // cause a flash of the default theme on the next load.
   (function () {
     try {
+      var validThemes = ['ihcc', 'plum', 'blue', 'teal', 'emerald', 'amber', 'arml'];
       var theme = localStorage.getItem('feldkamp-theme');
-      if (theme) document.documentElement.setAttribute('data-theme', theme);
+      if (theme && validThemes.indexOf(theme) !== -1) {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else {
+        localStorage.setItem('feldkamp-theme', 'ihcc');
+      }
       var mode = localStorage.getItem('feldkamp-mode');
       if (!mode) mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-mode', mode);
     } catch (e) { /* ignore */ }
   })();
 </script>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
 <div id="offline-banner" role="status" hidden>You're offline — changes are saved on this device.</div>
@@ -60,6 +65,7 @@
         <input type="checkbox" id="hide-completed" />
         <span>Hide completed</span>
       </label>
+      <button id="btn-clear-filter" class="btn secondary" type="button" hidden>Clear filters</button>
       <button id="btn-export-ics" class="btn secondary" type="button">Export to Calendar</button>
     </div>
     <div id="checklist-groups"></div>
@@ -211,6 +217,6 @@
   </form>
 </dialog>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

@@ -7,17 +7,24 @@
     '#2e7d32', '#8e4585', '#00695c', '#6d4c00',
   ];
 
+  function readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed;
+    } catch {
+      return fallback;
+    }
+  }
+
   /* ---------- storage ---------- */
 
   function loadAssignments() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const list = raw ? JSON.parse(raw) : [];
-      // Backfill updatedAt for data saved before sync existed.
-      return list.map((a) => (a.updatedAt ? a : { ...a, updatedAt: Date.now() }));
-    } catch {
-      return [];
-    }
+    const list = readJson(STORAGE_KEY, []);
+    if (!Array.isArray(list)) return [];
+    // Backfill updatedAt for data saved before sync existed.
+    return list.map((a) => (a && a.updatedAt ? a : { ...a, updatedAt: Date.now() }));
   }
 
   function saveAssignments(list) {
@@ -171,6 +178,7 @@
     refreshSubjectOptions();
     const subjectFilter = filterSubject.value;
     const hideDone = hideCompleted.checked;
+    const clearFilterBtn = document.getElementById('btn-clear-filter');
 
     const visible = visibleAssignments();
     let list = visible;
@@ -178,14 +186,23 @@
     if (hideDone) list = list.filter((a) => !a.done);
 
     checklistGroups.innerHTML = '';
-    checklistEmpty.hidden = visible.length > 0;
+    clearFilterBtn.hidden = !(subjectFilter || hideDone);
 
-    if (list.length === 0) {
-      checklistGroups.innerHTML = visible.length
-        ? '<p class="empty-state">Nothing to show here.</p>'
-        : '';
+    if (visible.length === 0) {
+      checklistEmpty.hidden = false;
+      checklistEmpty.textContent = 'No assignments yet. Tap "+ Add" to get started.';
       return;
     }
+
+    if (list.length === 0) {
+      checklistEmpty.hidden = false;
+      checklistEmpty.textContent = subjectFilter
+        ? 'No assignments match this filter.'
+        : 'No visible assignments. Try showing completed items.';
+      return;
+    }
+
+    checklistEmpty.hidden = true;
 
     const bySubject = new Map();
     for (const a of list) {
@@ -203,8 +220,13 @@
       const group = document.createElement('div');
       group.className = 'subject-group';
       const color = subjectColor(subject);
+      const count = `${items.length} assignment${items.length === 1 ? '' : 's'}`;
       group.innerHTML = `
-        <h2><span class="subject-dot" style="background:${color}"></span>${escapeHtml(subject)}</h2>
+        <h2>
+          <span class="subject-dot" style="background:${color}"></span>
+          <span>${escapeHtml(subject)}</span>
+          <span class="subject-count">${count}</span>
+        </h2>
         <ul class="item-list"></ul>
       `;
       const ul = group.querySelector('ul');
@@ -247,6 +269,11 @@
 
   filterSubject.addEventListener('change', renderChecklist);
   hideCompleted.addEventListener('change', renderChecklist);
+  document.getElementById('btn-clear-filter').addEventListener('click', () => {
+    filterSubject.value = '';
+    hideCompleted.checked = false;
+    renderChecklist();
+  });
 
   /* ---------- calendar view ---------- */
 
@@ -257,6 +284,7 @@
     const now = new Date();
     calYear = now.getFullYear();
     calMonth = now.getMonth();
+    selectedDate = todayStr();
   }
 
   const calMonthLabel = document.getElementById('cal-month-label');
@@ -422,13 +450,20 @@
   }
 
   function renderDayDetail(byDate) {
-    if (!isInMonth(selectedDate, calYear, calMonth)) {
-      calDayDetail.innerHTML = '';
+    if (!selectedDate) {
+      calDayDetail.innerHTML = '<h3>Day view</h3><p class="empty-state">Click a day to see its assignments.</p>';
       return;
     }
+
+    if (!isInMonth(selectedDate, calYear, calMonth)) {
+      const monthName = new Date(calYear, calMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      calDayDetail.innerHTML = `<h3>${monthName}</h3><p class="empty-state">Click a day in this month to view assignments.</p>`;
+      return;
+    }
+
     const items = (byDate.get(selectedDate) || []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     if (!items.length) {
-      calDayDetail.innerHTML = `<h3>${formatDate(selectedDate)}</h3><p class="empty-state">Nothing due this day.</p>`;
+      calDayDetail.innerHTML = `<h3>${formatDate(selectedDate)}</h3><p class="empty-state">No assignments due on this date.</p>`;
       return;
     }
     const ul = document.createElement('ul');
@@ -620,17 +655,22 @@
     { id: 'plum', label: 'Plum', light: '#7c1fa0', dark: '#bb5de0' },
     { id: 'blue', label: 'Blue', light: '#1c4d9c', dark: '#5a8ee2' },
     { id: 'teal', label: 'Teal', light: '#127d79', dark: '#5ae2dd' },
-    { id: 'crimson', label: 'Crimson', light: '#9c1c31', dark: '#e25a71' },
     { id: 'emerald', label: 'Emerald', light: '#127d44', dark: '#5ae29a' },
     { id: 'amber', label: 'Amber', light: '#9c641c', dark: '#e2a75a' },
     { id: 'arml', label: 'ARML', light: '#961200', dark: '#f2705f' },
   ];
 
-  function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'ihcc'; }
+  function getStoredTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved && THEMES.some((t) => t.id === saved)) return saved;
+    localStorage.setItem(THEME_KEY, 'ihcc');
+    return 'ihcc';
+  }
 
   function applyTheme(id) {
-    document.documentElement.setAttribute('data-theme', id);
-    localStorage.setItem(THEME_KEY, id);
+    const nextTheme = THEMES.some((t) => t.id === id) ? id : 'ihcc';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem(THEME_KEY, nextTheme);
     renderThemeSwatches();
   }
 
@@ -785,7 +825,8 @@
   }
 
   function getLists() {
-    try { return JSON.parse(localStorage.getItem(LISTS_KEY) || '[]'); } catch { return []; }
+    const lists = readJson(LISTS_KEY, []);
+    return Array.isArray(lists) ? lists : [];
   }
   function saveLists(lists) { localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
   function getActiveCode() { return localStorage.getItem(ACTIVE_CODE_KEY) || ''; }
@@ -829,15 +870,19 @@
 
   async function pullRemote(code) {
     const res = await firestoreFetch(`/syncCodes/${code}`);
-    if (res.status === 404) return { name: '', assignments: [] };
+    if (res.status === 404) return { found: false, name: '', assignments: [] };
     if (!res.ok) throw new Error(await firestoreErrorMessage(res));
     const doc = await res.json();
     const raw = doc.fields && doc.fields.data && doc.fields.data.stringValue;
     try {
       const parsed = JSON.parse(raw || '{}');
-      return { name: parsed.name || '', assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [] };
+      return {
+        found: true,
+        name: parsed.name || '',
+        assignments: Array.isArray(parsed.assignments) ? parsed.assignments : [],
+      };
     } catch {
-      return { name: '', assignments: [] };
+      return { found: true, name: '', assignments: [] };
     }
   }
 
@@ -1002,7 +1047,11 @@
   async function joinCode() {
     const input = document.getElementById('f-join-code');
     const code = normalizeCode(input.value);
-    if (!code) return;
+    if (!code) {
+      lastSyncError = 'Enter a valid sync code first.';
+      renderSyncStatusText();
+      return;
+    }
     const lists = getLists();
     if (lists.some((l) => l.code === code)) {
       await switchActiveCode(code);
@@ -1012,6 +1061,11 @@
     setSyncButtonBusy(true);
     try {
       const remote = await pullRemote(code);
+      if (!remote.found) {
+        lastSyncError = 'That code was not found. Double-check it and try again.';
+        renderSyncStatusText();
+        return;
+      }
       lists.push({ code, name: remote.name || 'Linked list' });
       saveLists(lists);
       await switchActiveCode(code);
@@ -1144,7 +1198,12 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((reg) => reg.unregister())))
+        .catch(() => {})
+        .finally(() => {
+          navigator.serviceWorker.register('sw.js?v=3').catch(() => {});
+        });
     });
 
     // controllerchange also fires on a brand-new visit's very first
