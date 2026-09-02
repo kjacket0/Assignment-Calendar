@@ -85,8 +85,8 @@
   /* bg-chrome as the page background, bg-surface (lighter) for cards —
      matches the real app's much darker overall field, and fixes surface
      having been darker than bg, backwards from every other theme here. */
-  --bg: #0d0d0f; --surface: #1f1f28; --text: #f2f2f2; --muted: #c9a0a0;
-  --border: #333333; --accent: #f2705f; --accent-contrast: #2a0a06;
+  --bg: #2A2A2A; --surface: #1f1f28; --text: #f2f2f2; --muted: #c9a0a0;
+  --border: #0D0D0F; --accent: #961200; --accent-contrast: #2a0a06;
 }
 
 * { box-sizing: border-box; }
