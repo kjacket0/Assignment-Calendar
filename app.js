@@ -628,23 +628,9 @@
 
   function getStoredTheme() { return localStorage.getItem(THEME_KEY) || 'ihcc'; }
 
-  function getThemeColorForMode(themeId, mode) {
-    const selected = THEMES.find((t) => t.id === themeId) || THEMES[0];
-    return mode === 'dark' ? selected.dark : selected.light;
-  }
-
-  function syncThemeColorMeta() {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) return;
-    const themeId = localStorage.getItem(THEME_KEY) || 'ihcc';
-    const mode = resolveMode();
-    meta.setAttribute('content', getThemeColorForMode(themeId, mode));
-  }
-
   function applyTheme(id) {
     document.documentElement.setAttribute('data-theme', id);
     localStorage.setItem(THEME_KEY, id);
-    syncThemeColorMeta();
     renderThemeSwatches();
   }
 
@@ -684,7 +670,6 @@
 
   function applyMode(mode) {
     document.documentElement.setAttribute('data-mode', mode);
-    syncThemeColorMeta();
   }
 
   function renderModeToggle() {

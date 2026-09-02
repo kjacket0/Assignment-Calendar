@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>FELDKAMP — Assignment Calendar</title>
 <meta name="description" content="Field EMS Lab &amp; Didactic Knowledge Assignment Management Platform" />
-<meta name="theme-color" content="#1b7e23" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="apple-touch-icon" href="icons/icon-180.png" />
@@ -17,27 +16,11 @@
   // cause a flash of the default theme on the next load.
   (function () {
     try {
-      var themeMap = {
-        ihcc: { light: '#1b7e23', dark: '#34b23e' },
-        plum: { light: '#7c1fa0', dark: '#bb5de0' },
-        blue: { light: '#1c4d9c', dark: '#5a8ee2' },
-        teal: { light: '#127d79', dark: '#5ae2dd' },
-        crimson: { light: '#9c1c31', dark: '#e25a71' },
-        emerald: { light: '#127d44', dark: '#5ae29a' },
-        amber: { light: '#9c641c', dark: '#e2a75a' },
-        arml: { light: '#961200', dark: '#f2705f' }
-      };
-
-      var theme = localStorage.getItem('feldkamp-theme') || 'ihcc';
-      if (themeMap[theme]) document.documentElement.setAttribute('data-theme', theme);
-
+      var theme = localStorage.getItem('feldkamp-theme');
+      if (theme) document.documentElement.setAttribute('data-theme', theme);
       var mode = localStorage.getItem('feldkamp-mode');
       if (!mode) mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-mode', mode);
-
-      var themeMeta = document.querySelector('meta[name="theme-color"]');
-      var selected = themeMap[theme] || themeMap.ihcc;
-      if (themeMeta) themeMeta.setAttribute('content', mode === 'dark' ? selected.dark : selected.light);
     } catch (e) { /* ignore */ }
   })();
 </script>
