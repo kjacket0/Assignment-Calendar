@@ -857,6 +857,65 @@
     if (await deleteSubject(s)) subjectDialog.close();
   });
 
+  /* ---------- bulk import ----------
+   * A one-time-per-semester escape hatch for pasting a syllabus's worth of
+   * due dates in at once instead of one-by-one through the Add dialog.
+   * Subjects referenced that don't exist yet go through the same
+   * ensureSubject() path a typed-in new subject would.
+   */
+
+  document.getElementById('f-import-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    const statusEl = document.getElementById('import-status');
+    if (!file) return;
+    try {
+      const items = JSON.parse(await file.text());
+      if (!Array.isArray(items)) throw new Error('File must contain a JSON array.');
+
+      let imported = 0;
+      for (const item of items) {
+        if (!item) continue;
+        const subject = String(item.subject || '').trim();
+        const title = String(item.title || '').trim();
+        const date = String(item.date || '').trim();
+        if (!subject || !title || !date) continue;
+
+        const isDuplicate = assignments.some(
+          (a) => !a.deleted && a.subject === subject && a.title === title && a.date === date
+        );
+        if (isDuplicate) continue;
+
+        ensureSubject(subject);
+        assignments.push({
+          id: uid(),
+          title,
+          subject,
+          date,
+          time: item.time ? String(item.time).trim() : '',
+          notes: item.notes ? String(item.notes).trim() : '',
+          done: false,
+          updatedAt: Date.now(),
+        });
+        imported++;
+      }
+
+      saveAssignments(assignments);
+      renderChecklist();
+      renderUpcoming();
+      renderCalendar();
+      renderSubjectManageList();
+      scheduleSync();
+
+      const skipped = items.length - imported;
+      statusEl.textContent = `Imported ${imported} assignment${imported === 1 ? '' : 's'}.` +
+        (skipped > 0 ? ` Skipped ${skipped} (duplicate or missing subject/title/date).` : '');
+    } catch (err) {
+      statusEl.textContent = `Import failed: ${err.message}`;
+    } finally {
+      e.target.value = '';
+    }
+  });
+
   /* ---------- .ics export ---------- */
 
   function pad(n) { return String(n).padStart(2, '0'); }

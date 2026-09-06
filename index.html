@@ -159,6 +159,18 @@
     </section>
 
     <section class="settings-section">
+      <h3>Import</h3>
+      <p class="dialog-help">
+        Bulk-add assignments from a JSON file — each entry is <code>{subject, title, date, time, notes}</code>, only <code>subject</code>/<code>title</code>/<code>date</code> required. Subjects that don't exist yet are created automatically. Entries matching an existing subject, title, and date are skipped.
+      </p>
+      <label class="field">
+        <span>Assignment file (.json)</span>
+        <input type="file" id="f-import-file" accept="application/json,.json" />
+      </label>
+      <p id="import-status" class="sync-status-text" aria-live="polite"></p>
+    </section>
+
+    <section class="settings-section">
       <h3>Sync</h3>
       <p class="dialog-help">
         Sync your assignments across devices
