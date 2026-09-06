@@ -2,9 +2,16 @@
   'use strict';
 
   const STORAGE_KEY = 'feldkamp-assignments-v1';
+  // 20 hues evenly spaced around the color wheel (fixed saturation, alternating
+  // lightness so neighbors don't blur together) so a big class list — or a
+  // bulk import spanning a whole semester — has room to stay visually
+  // distinct well past the old 8-color palette before any hash collision.
   const SUBJECT_PALETTE = [
-    '#0f6266', '#a35d00', '#5b3fb6', '#b3261e',
-    '#2e7d32', '#8e4585', '#00695c', '#6d4c00',
+    '#be2d2d', '#d06639', '#be842d', '#d0c139',
+    '#a1be2d', '#85d039', '#4abe2d', '#39d048',
+    '#2dbe67', '#39d0a3', '#2dbebe', '#39a3d0',
+    '#2d67be', '#3948d0', '#5e41d2', '#8539d0',
+    '#a12dbe', '#d039c1', '#be2d84', '#d03966',
   ];
 
   function readJson(key, fallback) {
@@ -76,6 +83,31 @@
     }
     if (changed) saveSubjects(subjects);
   })();
+
+  // Auto-fix color collisions — e.g. subjects created before the palette
+  // grew, or a bulk import that happened to hash several names into the
+  // same slot — instead of leaving it to be spotted and fixed by hand.
+  // Order is stable (subjects array order) so re-runs don't reshuffle
+  // colors that are already fine.
+  function deduplicateSubjectColors() {
+    const used = new Set();
+    let changed = false;
+    for (const s of visibleSubjects()) {
+      if (s.color && !used.has(s.color)) {
+        used.add(s.color);
+        continue;
+      }
+      const free = SUBJECT_PALETTE.find((c) => !used.has(c));
+      if (!free) continue; // more active subjects than palette colors — some repeats are unavoidable
+      s.color = free;
+      s.updatedAt = Date.now();
+      used.add(free);
+      changed = true;
+    }
+    if (changed) saveSubjects(subjects);
+    return changed;
+  }
+  deduplicateSubjectColors();
 
   /* ---------- helpers ---------- */
 
@@ -900,6 +932,7 @@
       }
 
       saveAssignments(assignments);
+      deduplicateSubjectColors();
       renderChecklist();
       renderUpcoming();
       renderCalendar();
