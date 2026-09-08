@@ -2,16 +2,19 @@
   'use strict';
 
   const STORAGE_KEY = 'feldkamp-assignments-v1';
-  // 20 hues evenly spaced around the color wheel (fixed saturation, alternating
-  // lightness so neighbors don't blur together) so a big class list — or a
-  // bulk import spanning a whole semester — has room to stay visually
-  // distinct well past the old 8-color palette before any hash collision.
+  // 12 colors — plenty for one semester's worth of classes — chosen for
+  // maximum mutual distinctness rather than even hue spacing: generated in
+  // CIE Lab at equal lightness/chroma (so no hue reads lighter or more
+  // washed-out than another, unlike naive same-saturation HSL stepping),
+  // then greedily picked from a dense candidate set to maximize the
+  // smallest gap between any two. sRGB can't actually hold cyan/blue at
+  // the same chroma as red/green (a real gamut limit, not an oversight),
+  // so a couple of neighbors there sit a bit closer than the rest, but
+  // every pair is still clearly distinguishable at a glance.
   const SUBJECT_PALETTE = [
-    '#be2d2d', '#d06639', '#be842d', '#d0c139',
-    '#a1be2d', '#85d039', '#4abe2d', '#39d048',
-    '#2dbe67', '#39d0a3', '#2dbebe', '#39a3d0',
-    '#2d67be', '#3948d0', '#5e41d2', '#8539d0',
-    '#a12dbe', '#d039c1', '#be2d84', '#d03966',
+    '#c94879', '#c55244', '#a76917', '#707e0f',
+    '#418630', '#028946', '#008676', '#0082a2',
+    '#007ad1', '#4474d2', '#766ac8', '#a859ad',
   ];
 
   function readJson(key, fallback) {
@@ -84,16 +87,20 @@
     if (changed) saveSubjects(subjects);
   })();
 
-  // Auto-fix color collisions — e.g. subjects created before the palette
-  // grew, or a bulk import that happened to hash several names into the
-  // same slot — instead of leaving it to be spotted and fixed by hand.
+  // Auto-fix color problems instead of leaving them to be spotted and
+  // fixed by hand: an exact collision (a bulk import hashing two names
+  // into the same slot), or a color left over from a since-retired
+  // palette generation (it won't be a member of SUBJECT_PALETTE anymore).
+  // A color the user explicitly picked is always a member of the current
+  // palette — the swatch picker only offers those — so this never
+  // touches a deliberate choice, only ever a stale or duplicate one.
   // Order is stable (subjects array order) so re-runs don't reshuffle
   // colors that are already fine.
   function deduplicateSubjectColors() {
     const used = new Set();
     let changed = false;
     for (const s of visibleSubjects()) {
-      if (s.color && !used.has(s.color)) {
+      if (s.color && SUBJECT_PALETTE.includes(s.color) && !used.has(s.color)) {
         used.add(s.color);
         continue;
       }
