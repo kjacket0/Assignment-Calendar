@@ -2,19 +2,30 @@
   'use strict';
 
   const STORAGE_KEY = 'feldkamp-assignments-v1';
-  // 12 colors — plenty for one semester's worth of classes — chosen for
-  // maximum mutual distinctness rather than even hue spacing: generated in
-  // CIE Lab at equal lightness/chroma (so no hue reads lighter or more
-  // washed-out than another, unlike naive same-saturation HSL stepping),
-  // then greedily picked from a dense candidate set to maximize the
-  // smallest gap between any two. sRGB can't actually hold cyan/blue at
-  // the same chroma as red/green (a real gamut limit, not an oversight),
-  // so a couple of neighbors there sit a bit closer than the rest, but
-  // every pair is still clearly distinguishable at a glance.
+  // 12 colors, one named hue family each (a red, an orange, a yellow, a
+  // green, ...) rather than the previous approach of stepping evenly
+  // around the hue wheel at one fixed lightness/saturation — that's what
+  // produced multiple "versions of green" that read as similar at a
+  // glance despite being technically distinct hex values. Distinctness
+  // here comes from varying lightness and saturation per family too, the
+  // same idea behind cartography palettes built for adjacent-region maps
+  // (worst-case pairwise RGB distance ~62, versus ~44 for the old one).
+  // Yellow/lime/cyan are shaded a bit darker than a pure vivid swatch
+  // would be — at full brightness they're nearly invisible as a small dot
+  // on a light background — while staying clearly that hue family.
   const SUBJECT_PALETTE = [
-    '#c94879', '#c55244', '#a76917', '#707e0f',
-    '#418630', '#028946', '#008676', '#0082a2',
-    '#007ad1', '#4474d2', '#766ac8', '#a859ad',
+    '#e6194b', // red
+    '#f58231', // orange
+    '#c2a800', // yellow (darkened for visibility on light backgrounds)
+    '#87b70b', // lime (darkened)
+    '#3cb44b', // green
+    '#469990', // teal
+    '#06acd0', // cyan (darkened)
+    '#4363d8', // blue
+    '#911eb4', // purple
+    '#f032e6', // magenta
+    '#9a6324', // brown
+    '#a9a9a9', // grey
   ];
 
   function readJson(key, fallback) {
