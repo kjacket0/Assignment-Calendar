@@ -709,7 +709,16 @@
       btnDelete.hidden = true;
     }
     dialog.showModal();
-    fTitle.focus();
+    // showModal() auto-focuses the first focusable form control (the title
+    // input) by default, which pops the mobile keyboard immediately. That's
+    // desirable when adding a new assignment, but not when just viewing/
+    // editing an existing one, so redirect focus to the (non-editable)
+    // heading in that case instead.
+    if (assignment) {
+      dialogTitle.focus();
+    } else {
+      fTitle.focus();
+    }
   }
 
   document.getElementById('btn-add').addEventListener('click', () => openDialog(null));
