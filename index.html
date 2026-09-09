@@ -130,6 +130,21 @@
   </form>
 </dialog>
 
+<dialog id="detail-dialog">
+  <button type="button" id="btn-detail-close-x" class="dialog-close" aria-label="Close">×</button>
+  <h2 id="detail-title"></h2>
+  <div class="item-subject" id="detail-subject"></div>
+  <div class="item-meta" id="detail-meta"></div>
+  <div class="item-notes" id="detail-notes" hidden></div>
+
+  <div class="dialog-actions">
+    <button type="button" id="btn-detail-delete" class="btn danger">Delete</button>
+    <span class="spacer"></span>
+    <button type="button" id="btn-detail-close" class="btn secondary">Close</button>
+    <button type="button" id="btn-detail-edit" class="btn primary">Edit</button>
+  </div>
+</dialog>
+
 <dialog id="sync-dialog">
   <button type="button" id="btn-sync-close" class="dialog-close" aria-label="Close settings" title="Close">×</button>
   <div>

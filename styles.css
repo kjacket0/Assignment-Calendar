@@ -914,6 +914,10 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
   transition: transform 0.1s ease, background-color 0.1s ease;
 }
 
+/* Room for the floating .dialog-close button so a long assignment title
+   doesn't wrap underneath it. */
+#detail-title { padding-right: 50px; margin-top: 0; }
+
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; font-size: 0.9rem; }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }

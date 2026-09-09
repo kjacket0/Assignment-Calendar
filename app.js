@@ -405,7 +405,7 @@
       <div class="item-meta${overdue ? ' overdue' : ''}">${overdue ? 'Overdue · ' : ''}${dateLabel}</div>
       ${notesHtml}
     `;
-    body.addEventListener('click', () => openDialog(a));
+    body.addEventListener('click', () => openDetailDialog(a));
 
     li.appendChild(checkbox);
     li.appendChild(body);
@@ -760,25 +760,71 @@
     scheduleSync();
   });
 
-  btnDelete.addEventListener('click', async () => {
-    if (!fId.value) return;
-    if (!(await appConfirm('Delete this assignment?'))) return;
+  async function deleteAssignment(a) {
+    if (!(await appConfirm('Delete this assignment?'))) return false;
     // Soft delete: keep a tombstone so the deletion propagates on sync
     // instead of the item reappearing from another device's copy.
-    const a = assignments.find((x) => x.id === fId.value);
-    if (a) {
-      a.deleted = true;
-      a.updatedAt = Date.now();
-    }
+    a.deleted = true;
+    a.updatedAt = Date.now();
     saveAssignments(assignments);
-    dialog.close();
     renderChecklist();
     renderUpcoming();
     renderCalendar();
     scheduleSync();
+    return true;
+  }
+
+  btnDelete.addEventListener('click', async () => {
+    if (!fId.value) return;
+    const a = assignments.find((x) => x.id === fId.value);
+    if (!a) return;
+    if (await deleteAssignment(a)) dialog.close();
   });
 
   dialog.addEventListener('cancel', () => dialog.close());
+
+  /* ---------- assignment detail (read-only) dialog ---------- */
+  // Tapping an assignment opens this instead of jumping straight into the
+  // editable form, so a stray tap while scanning the list can't accidentally
+  // change or delete anything — editing/deleting now require the extra,
+  // deliberate step of tapping Edit or Delete here.
+
+  const detailDialog = document.getElementById('detail-dialog');
+  const detailTitle = document.getElementById('detail-title');
+  const detailSubject = document.getElementById('detail-subject');
+  const detailMeta = document.getElementById('detail-meta');
+  const detailNotes = document.getElementById('detail-notes');
+  const btnDetailEdit = document.getElementById('btn-detail-edit');
+  const btnDetailDelete = document.getElementById('btn-detail-delete');
+
+  let detailAssignment = null;
+
+  function openDetailDialog(a) {
+    detailAssignment = a;
+    detailTitle.textContent = a.title;
+    detailSubject.innerHTML = `<span class="subject-dot" style="background:${subjectColor(a.subject)}"></span>${escapeHtml(a.subject)}`;
+    const overdue = isOverdue(a);
+    const dateLabel = formatDate(a.date) + (a.time ? ` · ${formatTime(a.time)}` : '');
+    detailMeta.textContent = (overdue ? 'Overdue · ' : '') + dateLabel;
+    detailMeta.className = 'item-meta' + (overdue ? ' overdue' : '');
+    detailNotes.hidden = !a.notes;
+    detailNotes.textContent = a.notes || '';
+    detailDialog.showModal();
+  }
+
+  btnDetailEdit.addEventListener('click', () => {
+    detailDialog.close();
+    openDialog(detailAssignment);
+  });
+
+  btnDetailDelete.addEventListener('click', async () => {
+    if (!detailAssignment) return;
+    if (await deleteAssignment(detailAssignment)) detailDialog.close();
+  });
+
+  document.getElementById('btn-detail-close').addEventListener('click', () => detailDialog.close());
+  document.getElementById('btn-detail-close-x').addEventListener('click', () => detailDialog.close());
+  detailDialog.addEventListener('cancel', () => detailDialog.close());
 
   /* ---------- subject management ---------- */
 
