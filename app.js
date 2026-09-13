@@ -91,12 +91,41 @@
   (function backfillSubjectsFromAssignments() {
     let changed = false;
     for (const a of visibleAssignments()) {
-      if (!a.subject || subjects.some((s) => s.name === a.subject && !s.deleted)) continue;
+      // Any record for this name — deleted or not — means it's already been
+      // through the system once. Skipping on a deleted match too (not just a
+      // live one) keeps a deleted subject deleted even though its old
+      // assignments still name it; otherwise every reload would silently
+      // resurrect it as a brand-new record (losing its color) just because
+      // leftover assignments hadn't been moved off it yet.
+      if (!a.subject || subjects.some((s) => s.name === a.subject)) continue;
       subjects.push({ id: uid(), name: a.subject, color: hashColor(a.subject), updatedAt: Date.now() });
       changed = true;
     }
     if (changed) saveSubjects(subjects);
   })();
+
+  // Auto-fix subjects that ended up with two active records sharing the
+  // same name — e.g. renaming one subject onto another's name, or (before
+  // the backfill fix above) a deleted subject getting silently resurrected
+  // by its own leftover assignments on a later reload. Assignments only
+  // reference a subject by name, so the extra record is pure clutter in the
+  // Settings list; keep the first (oldest) one and soft-delete the rest.
+  function deduplicateSubjectNames() {
+    const seen = new Set();
+    let changed = false;
+    for (const s of visibleSubjects()) {
+      if (!seen.has(s.name)) {
+        seen.add(s.name);
+        continue;
+      }
+      s.deleted = true;
+      s.updatedAt = Date.now();
+      changed = true;
+    }
+    if (changed) saveSubjects(subjects);
+    return changed;
+  }
+  deduplicateSubjectNames();
 
   // Auto-fix color problems instead of leaving them to be spotted and
   // fixed by hand: an exact collision (a bulk import hashing two names
@@ -933,9 +962,21 @@
           }
           saveAssignments(assignments);
         }
-        s.name = name;
-        s.color = pickedSubjectColor;
-        s.updatedAt = Date.now();
+        // Renaming onto a name another active subject already has would
+        // otherwise leave two records with the same name (one of the ways
+        // "duplicate subjects" happened before this fix) — merge into that
+        // one instead of creating the collision.
+        const dupe = subjects.find((x) => x.id !== s.id && x.name === name && !x.deleted);
+        if (dupe) {
+          s.deleted = true;
+          s.updatedAt = Date.now();
+          dupe.color = pickedSubjectColor;
+          dupe.updatedAt = Date.now();
+        } else {
+          s.name = name;
+          s.color = pickedSubjectColor;
+          s.updatedAt = Date.now();
+        }
       }
     } else {
       const existing = subjects.find((x) => x.name === name && !x.deleted);
