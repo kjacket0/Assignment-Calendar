@@ -58,6 +58,37 @@
 
   let assignments = loadAssignments();
 
+  function isReading(a) {
+    return a.kind === 'reading';
+  }
+
+  function noun(kind, n) {
+    return kind === 'reading' ? (n === 1 ? 'reading' : 'readings') : (n === 1 ? 'assignment' : 'assignments');
+  }
+
+  // Items imported before reading was its own type are tagged here, once:
+  // titles carrying the "Reading:" prefix from the syllabus import, and the
+  // Trauma Management "Chapter N" rows, which are chapter readings. Only
+  // items with no kind at all are touched, so a type the user picked
+  // explicitly (the form always saves one) is never overridden.
+  function retagReading() {
+    let changed = false;
+    for (const a of assignments) {
+      if (a.deleted || a.kind) continue;
+      const title = a.title || '';
+      const prefixed = /^Reading:\s*(.+)$/.exec(title);
+      const chapter = a.subject === 'Trauma Management' && /^Chapter \d+$/.test(title);
+      if (!prefixed && !chapter) continue;
+      a.kind = 'reading';
+      if (prefixed) a.title = prefixed[1];
+      a.updatedAt = Date.now();
+      changed = true;
+    }
+    if (changed) saveAssignments(assignments);
+    return changed;
+  }
+  retagReading();
+
   /* ---------- subjects ----------
    * Subjects are their own persisted entities (name + color), separate
    * from assignments, so a class list can be set up before anything is
@@ -230,7 +261,11 @@
     calendar: { btn: document.getElementById('tab-calendar'), view: document.getElementById('view-calendar') },
   };
 
+  let currentTab = 'checklist';
+
   function showTab(name) {
+    currentTab = name;
+    applyViewUI();
     for (const key of Object.keys(TABS)) {
       const active = key === name;
       TABS[key].btn.setAttribute('aria-selected', String(active));
@@ -242,6 +277,63 @@
 
   for (const key of Object.keys(TABS)) {
     TABS[key].btn.addEventListener('click', () => showTab(key));
+  }
+
+  /* ---------- Assignments | Reading sub-tabs ----------
+   * Each main tab keeps its own choice, remembered across reopenings. A
+   * missing or unreadable value means Assignments.
+   */
+
+  const VIEW_KEY = 'feldkamp-subtabs-v1';
+  const viewKind = (() => {
+    const saved = readJson(VIEW_KEY, {});
+    const out = {};
+    for (const key of Object.keys(TABS)) {
+      out[key] = saved && saved[key] === 'reading' ? 'reading' : 'assignment';
+    }
+    return out;
+  })();
+
+  function applyViewUI() {
+    const kind = viewKind[currentTab];
+    for (const key of Object.keys(TABS)) {
+      TABS[key].btn.querySelector('.rmark').toggleAttribute('hidden', viewKind[key] !== 'reading');
+    }
+    document.getElementById('subtab-assignment').setAttribute('aria-selected', String(kind === 'assignment'));
+    document.getElementById('subtab-reading').setAttribute('aria-selected', String(kind === 'reading'));
+    document.getElementById('btn-add-label').textContent = kind === 'reading' ? 'Add reading' : 'Add';
+    document.getElementById('btn-export-ics').hidden = kind === 'reading';
+    document.getElementById('reading-export-note').hidden = kind !== 'reading';
+  }
+
+  for (const btn of document.querySelectorAll('.subtab')) {
+    btn.addEventListener('click', () => {
+      viewKind[currentTab] = btn.dataset.kind === 'reading' ? 'reading' : 'assignment';
+      try { localStorage.setItem(VIEW_KEY, JSON.stringify(viewKind)); } catch { /* storage unavailable */ }
+      applyViewUI();
+      renderChecklist();
+      renderUpcoming();
+      renderCalendar();
+      window.scrollTo(0, 0);
+    });
+  }
+
+  // Overdue homework gets a red badge, reading you're behind on an amber
+  // one — each visible from the other side, so neither goes unnoticed.
+  function renderBadges() {
+    const today = todayStr();
+    let overdue = 0;
+    let behind = 0;
+    for (const a of visibleAssignments()) {
+      if (a.done || a.date >= today) continue;
+      if (isReading(a)) behind++; else overdue++;
+    }
+    const overdueBadge = document.getElementById('badge-overdue');
+    const behindBadge = document.getElementById('badge-behind');
+    overdueBadge.textContent = String(overdue);
+    overdueBadge.hidden = overdue === 0;
+    behindBadge.textContent = String(behind);
+    behindBadge.hidden = behind === 0;
   }
 
   /* ---------- checklist view ---------- */
@@ -336,10 +428,13 @@
     refreshSubjectOptions();
     const hideDone = hideCompleted.checked;
 
-    const visible = visibleAssignments();
+    const kind = viewKind.checklist;
+    const everything = visibleAssignments();
+    const visible = everything.filter((a) => isReading(a) === (kind === 'reading'));
+    renderBadges();
     checklistGroups.innerHTML = '';
 
-    if (visible.length === 0 && visibleSubjects().length === 0) {
+    if (everything.length === 0 && visibleSubjects().length === 0) {
       checklistEmpty.hidden = false;
       checklistEmpty.textContent = 'No assignments yet. Tap "+ Add" to get started.';
       return;
@@ -356,6 +451,8 @@
     names.forEach((subject, idx) => {
       let items = visible.filter((a) => a.subject === subject);
       const hadAny = items.length > 0;
+      const total = items.length;
+      const readCount = items.filter((a) => a.done).length;
       if (hideDone) items = items.filter((a) => !a.done);
       items.sort((a, b) => {
         if (a.done !== b.done) return a.done ? 1 : -1;
@@ -365,10 +462,14 @@
       const group = document.createElement('div');
       group.className = 'subject-group';
       const color = subjectColor(subject);
-      const countHtml = items.length
-        ? `<span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>`
-        : '';
-      const collapsed = isSubjectCollapsed(subject, items.length > 0);
+      let countHtml = '';
+      if (kind === 'reading') {
+        countHtml = `<span class="subject-count">${total ? `${readCount}/${total} read` : 'no reading'}</span>`;
+      } else if (items.length) {
+        countHtml = `<span class="subject-count">${items.length} ${noun(kind, items.length)}</span>`;
+      }
+      const collapseKey = `${kind}|${subject}`;
+      const collapsed = isSubjectCollapsed(collapseKey, items.length > 0);
       const bodyId = `subject-body-${idx}`;
       group.innerHTML = `
         <button type="button" class="subject-group-header" aria-expanded="${!collapsed}" aria-controls="${bodyId}">
@@ -382,7 +483,7 @@
       const header = group.querySelector('.subject-group-header');
       const ul = group.querySelector('ul');
       header.addEventListener('click', () => {
-        subjectCollapseOverrides.set(subject, !collapsed);
+        subjectCollapseOverrides.set(collapseKey, !collapsed);
         renderChecklist();
       });
       if (items.length) {
@@ -390,7 +491,7 @@
       } else {
         const li = document.createElement('li');
         li.className = 'subject-empty';
-        li.textContent = hadAny ? 'All caught up — nothing pending.' : 'No assignments yet.';
+        li.textContent = hadAny ? 'All caught up — nothing pending.' : (kind === 'reading' ? 'No reading yet.' : 'No assignments yet.');
         ul.appendChild(li);
       }
       checklistGroups.appendChild(group);
@@ -417,7 +518,9 @@
     const body = document.createElement('button');
     body.type = 'button';
     body.className = 'item-body';
-    const overdue = isOverdue(a);
+    const late = isOverdue(a);
+    const lateWord = isReading(a) ? 'Behind' : 'Overdue';
+    const lateClass = isReading(a) ? ' behind' : ' overdue';
     const dateLabel = formatDate(a.date) + (a.time ? ` · ${formatTime(a.time)}` : '');
     // Subject + notes only make sense outside the checklist, where items
     // are already grouped under a subject heading and opening the edit
@@ -431,7 +534,7 @@
     body.innerHTML = `
       ${subjectHtml}
       <div class="item-title">${escapeHtml(a.title)}</div>
-      <div class="item-meta${overdue ? ' overdue' : ''}">${overdue ? 'Overdue · ' : ''}${dateLabel}</div>
+      <div class="item-meta${late ? lateClass : ''}">${late ? `${lateWord} · ` : ''}${dateLabel}</div>
       ${notesHtml}
     `;
     body.addEventListener('click', () => openDetailDialog(a));
@@ -458,9 +561,11 @@
     const today = todayStr();
     const weekEnd = shiftDateKey(today, 6 - new Date().getDay());
 
+    const kind = viewKind.upcoming;
+    renderBadges();
     const buckets = { overdue: [], today: [], week: [], later: [] };
     for (const a of visibleAssignments()) {
-      if (a.done) continue;
+      if (a.done || isReading(a) !== (kind === 'reading')) continue;
       if (a.date < today) buckets.overdue.push(a);
       else if (a.date === today) buckets.today.push(a);
       else if (a.date <= weekEnd) buckets.week.push(a);
@@ -468,7 +573,7 @@
     }
 
     const sections = [
-      { key: 'overdue', label: 'Overdue', overdue: true },
+      { key: 'overdue', label: kind === 'reading' ? 'Behind' : 'Overdue', overdue: true },
       { key: 'today', label: 'Today' },
       { key: 'week', label: 'This Week' },
       { key: 'later', label: 'Later' },
@@ -483,11 +588,11 @@
       items.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
 
       const group = document.createElement('div');
-      group.className = 'subject-group' + (overdue ? ' upcoming-overdue' : '');
+      group.className = 'subject-group' + (overdue ? (kind === 'reading' ? ' upcoming-behind' : ' upcoming-overdue') : '');
       group.innerHTML = `
         <h2>
           <span>${label}</span>
-          <span class="subject-count">${items.length} assignment${items.length === 1 ? '' : 's'}</span>
+          <span class="subject-count">${items.length} ${noun(kind, items.length)}</span>
         </h2>
         <ul class="item-list"></ul>
       `;
@@ -495,6 +600,7 @@
       for (const a of items) ul.appendChild(renderItem(a, { showSubject: true }));
       upcomingGroups.appendChild(group);
     }
+    upcomingEmpty.textContent = kind === 'reading' ? "You're all caught up — no reading due." : "You're all caught up — nothing due.";
     upcomingEmpty.hidden = renderedAny;
   }
 
@@ -586,8 +692,10 @@
       month: 'long', year: 'numeric',
     });
 
+    const kind = viewKind.calendar;
     const byDate = new Map();
     for (const a of visibleAssignments()) {
+      if (isReading(a) !== (kind === 'reading')) continue;
       if (!byDate.has(a.date)) byDate.set(a.date, []);
       byDate.get(a.date).push(a);
     }
@@ -651,7 +759,7 @@
       }
       cell.innerHTML = `<span>${d}</span>${dotsHtml}`;
       const friendlyDate = formatDate(key);
-      cell.setAttribute('aria-label', `${friendlyDate}${dayItems.length ? `, ${dayItems.length} assignment${dayItems.length === 1 ? '' : 's'}` : ''}`);
+      cell.setAttribute('aria-label', `${friendlyDate}${dayItems.length ? `, ${dayItems.length} ${noun(kind, dayItems.length)}` : ''}`);
       cell.addEventListener('click', () => {
         selectedDate = key;
         pendingFocusDate = key;
@@ -678,20 +786,21 @@
   }
 
   function renderDayDetail(byDate) {
+    const plural = noun(viewKind.calendar, 2);
     if (!selectedDate) {
-      calDayDetail.innerHTML = '<h3>Day view</h3><p class="empty-state">Click a day to see its assignments.</p>';
+      calDayDetail.innerHTML = `<h3>Day view</h3><p class="empty-state">Click a day to see its ${plural}.</p>`;
       return;
     }
 
     if (!isInMonth(selectedDate, calYear, calMonth)) {
       const monthName = new Date(calYear, calMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-      calDayDetail.innerHTML = `<h3>${monthName}</h3><p class="empty-state">Click a day in this month to view assignments.</p>`;
+      calDayDetail.innerHTML = `<h3>${monthName}</h3><p class="empty-state">Click a day in this month to view ${plural}.</p>`;
       return;
     }
 
     const items = (byDate.get(selectedDate) || []).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     if (!items.length) {
-      calDayDetail.innerHTML = `<h3>${formatDate(selectedDate)}</h3><p class="empty-state">No assignments due on this date.</p>`;
+      calDayDetail.innerHTML = `<h3>${formatDate(selectedDate)}</h3><p class="empty-state">No ${plural} due on this date.</p>`;
       return;
     }
     const ul = document.createElement('ul');
@@ -713,6 +822,18 @@
   const fNotes = document.getElementById('f-notes');
   const btnDelete = document.getElementById('btn-delete');
   const dialogTitle = document.getElementById('add-dialog-title');
+  const fDateLabel = document.getElementById('f-date-label');
+  const kindButtons = [...document.querySelectorAll('.seg [data-kind]')];
+  let formKind = 'assignment';
+
+  function setFormKind(kind) {
+    formKind = kind === 'reading' ? 'reading' : 'assignment';
+    for (const b of kindButtons) b.setAttribute('aria-pressed', String(b.dataset.kind === formKind));
+    fDateLabel.textContent = formKind === 'reading' ? 'Read by *' : 'Due date *';
+    dialogTitle.textContent = `${fId.value ? 'Edit' : 'Add'} ${formKind === 'reading' ? 'reading' : 'assignment'}`;
+  }
+
+  for (const b of kindButtons) b.addEventListener('click', () => setFormKind(b.dataset.kind));
 
   function openDialog(assignment) {
     form.reset();
@@ -725,6 +846,7 @@
       fTime.value = assignment.time || '';
       fNotes.value = assignment.notes || '';
       btnDelete.hidden = false;
+      setFormKind(isReading(assignment) ? 'reading' : 'assignment');
     } else {
       dialogTitle.textContent = 'Add assignment';
       fId.value = '';
@@ -736,6 +858,8 @@
       // indicates is "selected" anymore.
       fDate.value = (!TABS.calendar.view.hidden && isInMonth(selectedDate, calYear, calMonth)) ? selectedDate : todayStr();
       btnDelete.hidden = true;
+      // A new item starts as whichever side the current tab is showing.
+      setFormKind(viewKind[currentTab]);
     }
     dialog.showModal();
     // showModal() auto-focuses the first focusable form control (the title
@@ -765,6 +889,7 @@
         a.date = fDate.value;
         a.time = fTime.value || '';
         a.notes = fNotes.value.trim();
+        a.kind = formKind;
         a.updatedAt = Date.now();
       }
     } else {
@@ -776,6 +901,7 @@
         time: fTime.value || '',
         notes: fNotes.value.trim(),
         done: false,
+        kind: formKind,
         updatedAt: Date.now(),
       });
     }
@@ -831,11 +957,11 @@
   function openDetailDialog(a) {
     detailAssignment = a;
     detailTitle.textContent = a.title;
-    detailSubject.innerHTML = `<span class="subject-dot" style="background:${subjectColor(a.subject)}"></span>${escapeHtml(a.subject)}`;
-    const overdue = isOverdue(a);
+    detailSubject.innerHTML = `<span class="subject-dot" style="background:${subjectColor(a.subject)}"></span>${escapeHtml(a.subject)}${isReading(a) ? ' · Reading' : ''}`;
+    const late = isOverdue(a);
     const dateLabel = formatDate(a.date) + (a.time ? ` · ${formatTime(a.time)}` : '');
-    detailMeta.textContent = (overdue ? 'Overdue · ' : '') + dateLabel;
-    detailMeta.className = 'item-meta' + (overdue ? ' overdue' : '');
+    detailMeta.textContent = (late ? (isReading(a) ? 'Behind · ' : 'Overdue · ') : '') + dateLabel;
+    detailMeta.className = 'item-meta' + (late ? (isReading(a) ? ' behind' : ' overdue') : '');
     detailNotes.hidden = !a.notes;
     detailNotes.textContent = a.notes || '';
     detailDialog.showModal();
@@ -1022,9 +1148,15 @@
       for (const item of items) {
         if (!item) continue;
         const subject = String(item.subject || '').trim();
-        const title = String(item.title || '').trim();
+        let title = String(item.title || '').trim();
         const date = String(item.date || '').trim();
         if (!subject || !title || !date) continue;
+
+        // Same normalization the one-time retag applies, so re-importing a
+        // "Reading: ..." file is still a no-op against already-retagged items.
+        let reading = item.kind === 'reading';
+        const prefixed = /^Reading:\s*(.+)$/.exec(title);
+        if (prefixed) { title = prefixed[1]; reading = true; }
 
         const isDuplicate = assignments.some(
           (a) => !a.deleted && a.subject === subject && a.title === title && a.date === date
@@ -1040,12 +1172,14 @@
           time: item.time ? String(item.time).trim() : '',
           notes: item.notes ? String(item.notes).trim() : '',
           done: false,
+          ...(reading ? { kind: 'reading' } : {}),
           updatedAt: Date.now(),
         });
         imported++;
       }
 
       saveAssignments(assignments);
+      retagReading();
       deduplicateSubjectColors();
       renderChecklist();
       renderUpcoming();
@@ -1125,7 +1259,7 @@
   }
 
   document.getElementById('btn-export-ics').addEventListener('click', async () => {
-    const visible = visibleAssignments();
+    const visible = visibleAssignments().filter((a) => !isReading(a));
     if (!visible.length) {
       await appAlert('No assignments to export yet.');
       return;
@@ -1444,6 +1578,7 @@
         saveAssignments(assignments);
         changed = true;
       }
+      if (retagReading()) changed = true;
       if (stableKey(mergedSubjects) !== stableKey(subjects)) {
         subjects = mergedSubjects;
         saveSubjects(subjects);
@@ -1506,6 +1641,7 @@
       const remoteNew = await pullRemote(newCode);
       assignments = pruneTombstones(remoteNew.assignments);
       subjects = pruneTombstones(remoteNew.subjects);
+      retagReading();
       saveAssignments(assignments);
       saveSubjects(subjects);
       setActiveCode(newCode);
@@ -1737,6 +1873,7 @@
 
   /* ---------- init ---------- */
 
+  applyViewUI();
   renderChecklist();
   syncNow();
   document.addEventListener('visibilitychange', () => {

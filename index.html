@@ -47,10 +47,14 @@
     </div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Views">
-    <button id="tab-checklist" class="tab" role="tab" aria-selected="true" aria-controls="view-checklist">Checklist</button>
-    <button id="tab-upcoming" class="tab" role="tab" aria-selected="false" aria-controls="view-upcoming">Upcoming</button>
-    <button id="tab-calendar" class="tab" role="tab" aria-selected="false" aria-controls="view-calendar">Calendar</button>
+    <button id="tab-checklist" class="tab" role="tab" aria-selected="true" aria-controls="view-checklist">Checklist<svg class="ico-book rmark" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg></button>
+    <button id="tab-upcoming" class="tab" role="tab" aria-selected="false" aria-controls="view-upcoming">Upcoming<svg class="ico-book rmark" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg></button>
+    <button id="tab-calendar" class="tab" role="tab" aria-selected="false" aria-controls="view-calendar">Calendar<svg class="ico-book rmark" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg></button>
   </nav>
+  <div class="subtabs" role="tablist" aria-label="Show">
+    <button id="subtab-assignment" class="subtab" role="tab" data-kind="assignment" aria-selected="true"><svg class="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> Assignments <span id="badge-overdue" class="badge red" hidden></span></button>
+    <button id="subtab-reading" class="subtab" role="tab" data-kind="reading" aria-selected="false"><svg class="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg> Reading <span id="badge-behind" class="badge amber" hidden></span></button>
+  </div>
 </header>
 
 <main>
@@ -62,6 +66,7 @@
       </label>
       <button id="btn-export-ics" class="btn secondary" type="button">Export to Calendar</button>
     </div>
+    <p id="reading-export-note" class="note-line" hidden>Reading is left out of Export to Calendar.</p>
     <div id="checklist-groups"></div>
     <p id="checklist-empty" class="empty-state" hidden>No assignments yet. Tap "+ Add" to get started.</p>
   </section>
@@ -85,7 +90,7 @@
 </main>
 
 <button id="btn-add" class="fab" type="button" aria-haspopup="dialog" aria-controls="add-dialog">
-  <span aria-hidden="true">+</span> Add
+  <span aria-hidden="true">+</span> <span id="btn-add-label">Add</span>
 </button>
 
 <dialog id="add-dialog">
@@ -103,9 +108,17 @@
       <datalist id="subject-list"></datalist>
     </label>
 
+    <div class="field">
+      <span id="f-kind-label">Type</span>
+      <div class="seg" role="group" aria-labelledby="f-kind-label">
+        <button type="button" id="f-kind-assignment" data-kind="assignment" aria-pressed="true">Assignment</button>
+        <button type="button" id="f-kind-reading" data-kind="reading" aria-pressed="false"><svg class="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg> Reading</button>
+      </div>
+    </div>
+
     <div class="field-row">
       <label class="field">
-        <span>Due date *</span>
+        <span id="f-date-label">Due date *</span>
         <input type="date" id="f-date" required />
       </label>
       <label class="field">
