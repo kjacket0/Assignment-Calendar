@@ -62,6 +62,49 @@
     return a.kind === 'reading';
   }
 
+  /* ---------- attachments ----------
+   * Links to files kept elsewhere (OneDrive), not copies of the files: a
+   * link is a few hundred bytes of text, so it syncs with the assignment to
+   * the phone and the laptop like any other field, where a cached file would
+   * sit in one device's browser storage only. Anything synced in is
+   * re-validated at render time, so a bad value can never become a
+   * javascript: or data: link.
+   */
+
+  const MAX_ATTACHMENTS = 10;
+  const PAPERCLIP = '<svg class="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>';
+
+  // Returns a clean https/http URL, or null. A pasted "1drv.ms/..." with no
+  // scheme is accepted; any other scheme (javascript:, data:, mailto:) is not.
+  function parseLinkUrl(raw) {
+    let text = String(raw || '').trim();
+    if (!text || text.length > 2000) return null;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(text)) text = `https://${text}`;
+    let url;
+    try { url = new URL(text); } catch { return null; }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    if (!url.hostname.includes('.')) return null;
+    return url.href;
+  }
+
+  function linkHost(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+  }
+
+  function defaultLinkName(url) {
+    const host = linkHost(url);
+    return /(^|\.)(1drv\.ms|onedrive\.live\.com|sharepoint\.com)$/.test(host) ? 'OneDrive file' : host || 'Link';
+  }
+
+  function attachmentsOf(a) {
+    return Array.isArray(a.attachments) ? a.attachments : [];
+  }
+
+  function attachBadge(a) {
+    const n = attachmentsOf(a).length;
+    return n ? `<span class="attach-badge" aria-label="${n} attachment${n === 1 ? '' : 's'}">${PAPERCLIP}${n}</span>` : '';
+  }
+
   function noun(kind, n) {
     return kind === 'reading' ? (n === 1 ? 'reading' : 'readings') : (n === 1 ? 'assignment' : 'assignments');
   }
@@ -534,7 +577,7 @@
     body.innerHTML = `
       ${subjectHtml}
       <div class="item-title">${escapeHtml(a.title)}</div>
-      <div class="item-meta${late ? lateClass : ''}">${late ? `${lateWord} · ` : ''}${dateLabel}</div>
+      <div class="item-meta${late ? lateClass : ''}">${late ? `${lateWord} · ` : ''}${dateLabel}${attachBadge(a)}</div>
       ${notesHtml}
     `;
     body.addEventListener('click', () => openDetailDialog(a));
@@ -823,6 +866,11 @@
   const btnDelete = document.getElementById('btn-delete');
   const dialogTitle = document.getElementById('add-dialog-title');
   const fDateLabel = document.getElementById('f-date-label');
+  const fAttachList = document.getElementById('f-attach-list');
+  const fAttachUrl = document.getElementById('f-attach-url');
+  const fAttachName = document.getElementById('f-attach-name');
+  const fAttachError = document.getElementById('f-attach-error');
+  let formAttachments = [];
   const kindButtons = [...document.querySelectorAll('.seg [data-kind]')];
   let formKind = 'assignment';
 
@@ -835,8 +883,79 @@
 
   for (const b of kindButtons) b.addEventListener('click', () => setFormKind(b.dataset.kind));
 
+  function showAttachError(message) {
+    fAttachError.textContent = message || '';
+    fAttachError.hidden = !message;
+  }
+
+  function renderFormAttachments() {
+    fAttachList.innerHTML = '';
+    formAttachments.forEach((att, i) => {
+      const li = document.createElement('li');
+      li.className = 'attach-row';
+      const label = document.createElement('span');
+      label.className = 'attach-name';
+      label.textContent = att.name;
+      const host = document.createElement('span');
+      host.className = 'attach-host';
+      host.textContent = linkHost(att.url);
+      if (host.textContent !== att.name) label.appendChild(host);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn secondary';
+      remove.textContent = 'Remove';
+      remove.setAttribute('aria-label', `Remove ${att.name}`);
+      remove.addEventListener('click', () => {
+        formAttachments.splice(i, 1);
+        renderFormAttachments();
+      });
+      li.append(label, remove);
+      fAttachList.appendChild(li);
+    });
+  }
+
+  // Returns false only when something was typed that can't be added, so a
+  // pasted-but-not-yet-added link is never silently dropped on Save.
+  function tryAddAttachment() {
+    const raw = fAttachUrl.value.trim();
+    if (!raw) { showAttachError(''); return true; }
+    const url = parseLinkUrl(raw);
+    if (!url) {
+      showAttachError("That doesn't look like a link. Paste the full link from OneDrive.");
+      return false;
+    }
+    if (formAttachments.length >= MAX_ATTACHMENTS) {
+      showAttachError(`Up to ${MAX_ATTACHMENTS} attachments per item.`);
+      return false;
+    }
+    if (formAttachments.some((a) => a.url === url)) {
+      showAttachError('That link is already attached.');
+      return false;
+    }
+    formAttachments.push({ name: fAttachName.value.trim() || defaultLinkName(url), url });
+    fAttachUrl.value = '';
+    fAttachName.value = '';
+    showAttachError('');
+    renderFormAttachments();
+    return true;
+  }
+
+  document.getElementById('btn-attach-add').addEventListener('click', tryAddAttachment);
+  for (const input of [fAttachUrl, fAttachName]) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      tryAddAttachment();
+    });
+  }
+
   function openDialog(assignment) {
     form.reset();
+    formAttachments = assignment
+      ? attachmentsOf(assignment).filter((a) => parseLinkUrl(a.url)).map((a) => ({ name: String(a.name || ''), url: a.url }))
+      : [];
+    showAttachError('');
+    renderFormAttachments();
     if (assignment) {
       dialogTitle.textContent = 'Edit assignment';
       fId.value = assignment.id;
@@ -880,6 +999,7 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!fTitle.value.trim() || !fSubject.value.trim() || !fDate.value) return;
+    if (!tryAddAttachment()) return;
 
     if (fId.value) {
       const a = assignments.find((x) => x.id === fId.value);
@@ -890,6 +1010,8 @@
         a.time = fTime.value || '';
         a.notes = fNotes.value.trim();
         a.kind = formKind;
+        if (formAttachments.length) a.attachments = formAttachments.map((x) => ({ ...x }));
+        else delete a.attachments;
         a.updatedAt = Date.now();
       }
     } else {
@@ -902,6 +1024,7 @@
         notes: fNotes.value.trim(),
         done: false,
         kind: formKind,
+        ...(formAttachments.length ? { attachments: formAttachments.map((x) => ({ ...x })) } : {}),
         updatedAt: Date.now(),
       });
     }
@@ -949,6 +1072,8 @@
   const detailSubject = document.getElementById('detail-subject');
   const detailMeta = document.getElementById('detail-meta');
   const detailNotes = document.getElementById('detail-notes');
+  const detailAttachments = document.getElementById('detail-attachments');
+  const detailAttachList = document.getElementById('detail-attach-list');
   const btnDetailEdit = document.getElementById('btn-detail-edit');
   const btnDetailDelete = document.getElementById('btn-detail-delete');
 
@@ -964,6 +1089,29 @@
     detailMeta.className = 'item-meta' + (late ? (isReading(a) ? ' behind' : ' overdue') : '');
     detailNotes.hidden = !a.notes;
     detailNotes.textContent = a.notes || '';
+
+    detailAttachList.innerHTML = '';
+    for (const att of attachmentsOf(a)) {
+      const url = parseLinkUrl(att.url);
+      if (!url) continue;
+      const li = document.createElement('li');
+      const link = document.createElement('a');
+      link.className = 'attach-link';
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.innerHTML = PAPERCLIP;
+      const text = document.createElement('span');
+      text.textContent = String(att.name || defaultLinkName(url));
+      const host = document.createElement('span');
+      host.className = 'attach-host';
+      host.textContent = linkHost(url);
+      if (host.textContent !== text.textContent) text.appendChild(host);
+      link.appendChild(text);
+      li.appendChild(link);
+      detailAttachList.appendChild(li);
+    }
+    detailAttachments.hidden = !detailAttachList.children.length;
     detailDialog.showModal();
   }
 

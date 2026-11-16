@@ -132,6 +132,18 @@
       <textarea id="f-notes" rows="3" maxlength="500"></textarea>
     </label>
 
+    <div class="field" id="f-attach-field">
+      <span id="f-attach-label">Attachments</span>
+      <ul id="f-attach-list" class="attach-list" aria-labelledby="f-attach-label"></ul>
+      <div class="attach-add">
+        <input type="text" id="f-attach-url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste a OneDrive link" aria-label="Link to a file" />
+        <input type="text" id="f-attach-name" maxlength="60" autocomplete="off" placeholder="Name (optional)" aria-label="Name for the link" />
+        <button type="button" id="btn-attach-add" class="btn secondary">Add link</button>
+      </div>
+      <p id="f-attach-error" class="attach-error" role="alert" hidden></p>
+      <p class="dialog-help">In OneDrive: open the file, tap Share, then Copy link.</p>
+    </div>
+
     <input type="hidden" id="f-id" />
 
     <div class="dialog-actions">
@@ -149,6 +161,10 @@
   <div class="item-subject" id="detail-subject"></div>
   <div class="item-meta" id="detail-meta"></div>
   <div class="item-notes" id="detail-notes" hidden></div>
+  <div id="detail-attachments" hidden>
+    <div class="day-sub"><svg class="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg> Attachments</div>
+    <ul id="detail-attach-list" class="attach-links"></ul>
+  </div>
 
   <div class="dialog-actions">
     <button type="button" id="btn-detail-delete" class="btn danger">Delete</button>

@@ -1039,3 +1039,48 @@ textarea { min-height: 72px; }
   background: var(--accent);
   color: var(--accent-contrast);
 }
+
+/* Attachments: links to files kept in OneDrive, so they follow the
+   assignment between devices through sync instead of living in one
+   device's browser storage. */
+.attach-list, .attach-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.attach-list:empty { display: none; }
+
+.attach-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  min-height: 44px;
+}
+
+.attach-row .attach-name { flex: 1; min-width: 0; font-weight: 600; word-break: break-word; }
+.attach-row .attach-host { display: block; font-size: 0.72rem; font-weight: 400; color: var(--muted); }
+.attach-row .btn { min-height: 36px; padding: 4px 10px; }
+
+.attach-add { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+
+.attach-error { margin: 6px 0 0; font-size: 0.82rem; color: var(--overdue); }
+
+.attach-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.attach-link .attach-host { display: block; font-size: 0.72rem; font-weight: 400; color: var(--muted); }
+.attach-link:active { background: var(--bg); }
+
+.attach-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; }
+.day-sub { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin: 14px 0 6px; display: flex; align-items: center; gap: 6px; }
